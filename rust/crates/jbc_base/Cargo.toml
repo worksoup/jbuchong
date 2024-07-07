@@ -1,0 +1,8 @@
+[package]
+name = "jbc_base"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+j4rs = { workspace = true }
+j4rs_derive = { workspace = true }

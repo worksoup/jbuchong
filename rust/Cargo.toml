@@ -1,0 +1,19 @@
+[package]
+name = "mirai_j4rs"
+version = "0.1.0"
+edition = "2021"
+readme = "README.md"
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/*",
+]
+default-members = ["crates/*"]
+
+[dependencies]
+
+
+[workspace.dependencies]
+j4rs = "0.20"
+j4rs_derive = "0.1"
