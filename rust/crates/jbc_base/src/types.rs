@@ -122,3 +122,8 @@ impl Default for KotlinUnit {
         Self::new().unwrap()
     }
 }
+impl From<()> for KotlinUnit {
+    fn from(_: ()) -> Self {
+        Self::default()
+    }
+}
