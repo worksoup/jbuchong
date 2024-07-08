@@ -40,6 +40,7 @@ pub use interface::*;
 pub use kotlin::*;
 pub use predicate::*;
 pub use supplier::*;
+pub use bi_consumer::*;
 
 const POINTER_SIZE: usize =
     size_of::<*mut dyn Fn(DataWrapper<Instance, DefaultCast>) -> Result<Instance, J4RsError>>();
