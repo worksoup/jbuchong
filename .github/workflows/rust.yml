@@ -25,6 +25,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check  --manifest-path ./rust/Cargo.toml
+      - name: Help
+        run: cargo help
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
