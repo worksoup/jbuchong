@@ -5,6 +5,7 @@ use j4rs::{Instance, InvocationArg, Jvm};
 use jbc_derive::{AsInstanceDerive, GetInstanceDerive, java_type, NewType, TryFromInstanceDerive};
 use crate::traits::{GetInstanceTrait, TryFromInstanceTrait};
 use crate as jbuchong;
+
 #[derive(NewType)]
 pub struct JavaString(String);
 
@@ -32,7 +33,7 @@ impl TryFromInstanceTrait for JavaBytes {
     }
 }
 
-#[derive(NewType)]
+#[derive(NewType, GetInstanceDerive, TryFromInstanceDerive, AsInstanceDerive)]
 pub struct InstanceWrapper(Instance);
 
 impl InstanceWrapper {
@@ -41,19 +42,6 @@ impl InstanceWrapper {
         T: TryFromInstanceTrait,
     {
         T::try_from_instance(Jvm::attach_thread()?.clone_instance(&self)?)
-    }
-}
-
-impl GetInstanceTrait for InstanceWrapper {
-    fn get_instance(&self) -> Result<Instance, J4RsError> {
-        let jvm = Jvm::attach_thread().unwrap();
-        jvm.clone_instance(&self)
-    }
-}
-
-impl TryFromInstanceTrait for InstanceWrapper {
-    fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
-        Ok(Self(instance))
     }
 }
 
@@ -117,5 +105,20 @@ where
         let val1 = F::try_from_instance(val1)?;
         let val2 = S::try_from_instance(val2)?;
         Ok((val1, val2))
+    }
+}
+#[java_type("kotlin.Unit")]
+#[derive(NewType, GetInstanceDerive, TryFromInstanceDerive, AsInstanceDerive)]
+pub struct KotlinUnit(Instance);
+
+impl KotlinUnit {
+    pub fn new() -> Result<Self, J4RsError> {
+        Jvm::attach_thread()?.static_class("kotlin.Unit$INSTANCE").map(Self::from)
+    }
+}
+
+impl Default for KotlinUnit {
+    fn default() -> Self {
+        Self::new().unwrap()
     }
 }
