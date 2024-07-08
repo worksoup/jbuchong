@@ -17,6 +17,9 @@ impl<T> Predicate<T> {
         let result = jvm.invoke(&self.get_instance()?, "test", &[v])?;
         bool::try_from_instance(result)
     }
+    pub fn call(&self, t: T) -> bool {
+        self.func.call(t)
+    }
 }
 
 impl<T> Predicate<T>

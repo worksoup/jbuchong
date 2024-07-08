@@ -81,6 +81,12 @@ mod tests {
         let test_instance = InvocationArg::try_from(true).unwrap();
         consumer.accept(test_instance).unwrap();
         consumer.drop();
+        let f = move |x: bool| {
+            println!("x = {x}.");
+        };
+        let consumer = Consumer::new(f);
+        consumer.call(false);
+        consumer.drop();
     }
 
     #[test]
@@ -113,8 +119,10 @@ mod tests {
         let function = Function::new(f);
         let test_instance = InvocationArg::try_from(true).unwrap();
         let x = function.apply(test_instance).unwrap();
-        function.drop();
         println!("a = {a}\nThe class name is `{}`.", x.fuck());
+        let y = function.call(x);
+        println!("a = {a}\nThe class name is `{}`.", y.fuck());
+        function.drop();
     }
 
     #[test]

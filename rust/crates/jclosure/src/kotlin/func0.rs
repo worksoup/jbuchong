@@ -12,6 +12,9 @@ impl<R> Func0<R> {
     pub fn drop(self) {
         self.func.drop()
     }
+    pub fn call(&self) -> R {
+        self.func.call()
+    }
 }
 impl<R> Func0<R>
 where

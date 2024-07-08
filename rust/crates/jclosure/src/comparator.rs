@@ -19,6 +19,9 @@ impl<T> Comparator<T> {
         let result = jvm.invoke(&self.get_instance()?, "compare", &[v1, v2])?;
         Ordering::try_from_instance(result)
     }
+    pub fn call(&self, v1: T, v2: T) -> Ordering {
+        self.func.call(v1, v2)
+    }
 }
 
 impl<T> Comparator<T>

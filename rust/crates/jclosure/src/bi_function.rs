@@ -11,6 +11,9 @@ impl<T1, T2, R> BiFunction<T1, T2, R> {
     pub fn drop(self) {
         self.func.drop()
     }
+    pub fn call(&self, v1: T1, v2: T2) -> R {
+        self.func.call(Pair::new(v1, v2))
+    }
 }
 impl<T1, T2, R> BiFunction<T1, T2, R>
 where
@@ -34,7 +37,7 @@ where
         F: Fn(T1, T2) -> R + 'static,
     {
         let internal_fn = move |v: Pair<T1, T2>| -> R {
-            let (v1, v2) = v.get_pair().unwrap();
+            let (v1, v2) = v.into_inner();
             closure(v1, v2)
         };
         let func = Function::new(internal_fn);

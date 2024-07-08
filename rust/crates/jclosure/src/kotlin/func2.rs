@@ -12,6 +12,9 @@ impl<T, U, R> Func2<T, U, R> {
     pub fn drop(self) {
         self.func.drop()
     }
+    pub fn call(&self, t: T, u: U) -> R {
+        self.func.call(t, u)
+    }
 }
 impl<T, U, R> Func2<T, U, R>
 where

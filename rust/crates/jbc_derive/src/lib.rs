@@ -29,21 +29,20 @@ fn impl_kt_func_n_(n: usize) -> String {
         .chars()
         .map(|c| format!("{c}"))
         .collect::<Vec<_>>();
-    let type_params_1 = upper_params.join(", ");
-    let type_params_2 = upper_params[2..].join(", ");
-    let type_params_3 = "ABCDEFGHIJKLMNOP"[0..n]
+    let type_params = upper_params[2..].join(", ");
+    let args_1 = "ABCDEFGHIJKLMNOP"[2..n]
+        .chars()
+        .map(|c| format!("{}: {}", c.to_lowercase(), c))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let args_2 = "ABCDEFGHIJKLMNOP"[0..n]
         .chars()
         .map(|c| format!("{}: InvocationArg", c.to_lowercase()))
         .collect::<Vec<_>>()
         .join(", ");
-    let type_params_4 = "ABCDEFGHIJKLMNOP"[0..n]
+    let call_args = "ABCDEFGHIJKLMNOP"[2..n]
         .chars()
         .map(|c| format!("{}", c.to_lowercase(),))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let type_params_5 = "ABCDEFGHIJKLMNOP"[2..n]
-        .chars()
-        .map(|c| format!("{}: {}", c.to_lowercase(), c))
         .collect::<Vec<_>>()
         .join(", ");
     let where_params = "ABCDEFGHIJKLMNOP"[0..n]
@@ -56,36 +55,39 @@ fn impl_kt_func_n_(n: usize) -> String {
     format!(
         r#"
 #[derive(GetInstanceDerive)]
-pub struct {type_name}<{type_params_1}, R> {{
+pub struct {type_name}<A, B, {type_params}, R> {{
     instance: Instance,
-    func: {last_type_name}<KotlinPair<A, B>, {type_params_2}, R>,
+    func: {last_type_name}<KotlinPair<A, B>, {type_params}, R>,
 }}
-impl<{type_params_1}, R> {type_name}<{type_params_1}, R> {{
+impl<A, B, {type_params}, R> {type_name}<A, B, {type_params}, R> {{
     pub fn drop(self) {{
         self.func.drop()
     }}
+    pub fn call(&self, a: A, b: B, {args_1}) -> R {{
+        self.func.call(KotlinPair::new(a, b), {call_args})
+    }}
 }}
-impl<{type_params_1}, R> {type_name}<{type_params_1}, R>
+impl<A, B, {type_params}, R> {type_name}<A, B, {type_params}, R>
 where
     R: TryFromInstanceTrait,
 {{
-    pub fn invoke(&self, {type_params_3}) -> Result<R, J4RsError> {{
+    pub fn invoke(&self, {args_2}) -> Result<R, J4RsError> {{
         let jvm = Jvm::attach_thread()?;
-        let result = jvm.invoke(&self.get_instance()?, "invoke", &[{type_params_4}])?;
+        let result = jvm.invoke(&self.get_instance()?, "invoke", &[a, b, {call_args}])?;
         R::try_from_instance(result)
     }}
 }}
 
-impl<{type_params_1}, R> {type_name}<{type_params_1}, R>
+impl<A, B, {type_params}, R> {type_name}<A, B, {type_params}, R>
 where
     {where_params},
     R: GetInstanceTrait,
 {{
-    pub fn new<Func>(closure: Func) -> {type_name}<{type_params_1}, R>
+    pub fn new<Func>(closure: Func) -> {type_name}<A, B, {type_params}, R>
     where
-        Func: Fn({type_params_1}) -> R + 'static,
+        Func: Fn(A, B, {type_params}) -> R + 'static,
     {{
-        let internal_fn = move |v: KotlinPair<A, B>, {type_params_5}| -> R {{ let (a, b) = v.get_pair().unwrap(); closure({type_params_4}) }};
+        let internal_fn = move |v: KotlinPair<A, B>, {args_1}| -> R {{ let (a, b) = v.into_inner(); closure(a, b, {call_args}) }};
         let func = {last_type_name}::new(internal_fn);
         let jvm = Jvm::attach_thread().unwrap();
         let instance = jvm
@@ -213,6 +215,7 @@ fn type_is_instance(field: &Field) -> bool {
 }
 fn fill_default_fields(
     fields: &Fields,
+    field_is_needed: impl Fn(&Field) -> bool,
     value_name: &proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     let mut tokens = proc_macro2::TokenStream::new();
@@ -221,7 +224,7 @@ fn fill_default_fields(
         Fields::Named(fields) => {
             for field in &fields.named {
                 let field_name = field.ident.as_ref().unwrap();
-                if type_is_instance(field) && !instance_filled {
+                if field_is_needed(field) && !instance_filled {
                     tokens.extend(quote!(#field_name:#value_name,));
                     instance_filled = true;
                 } else {
@@ -234,7 +237,7 @@ fn fill_default_fields(
         }
         Fields::Unnamed(fields) => {
             for field in &fields.unnamed {
-                if type_is_instance(field) && !instance_filled {
+                if field_is_needed(field) && !instance_filled {
                     tokens.extend(quote!(#value_name,));
                     instance_filled = true;
                 } else {
@@ -278,7 +281,8 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
     let generics = &ast.generics;
     let impl_tokens = match &ast.data {
         Data::Struct(s) => {
-            let tmp = fill_default_fields(&s.fields, &"instance".parse().unwrap());
+            let tmp =
+                fill_default_fields(&s.fields, type_is_instance, &"instance".parse().unwrap());
             quote!(
                 Self
                 #tmp
@@ -410,7 +414,7 @@ pub fn java_type(type_name: TokenStream, input: TokenStream) -> TokenStream {
 /// type.
 #[proc_macro_derive(NewType)]
 pub fn newtype(input: TokenStream) -> TokenStream {
-    let input = syn::parse::<syn::DeriveInput>(input).expect("syn parse derive input");
+    let input = syn::parse::<DeriveInput>(input).expect("syn parse derive input");
 
     gen_impl(input).into()
 }
@@ -455,7 +459,11 @@ fn gen_impl(input: DeriveInput) -> proc_macro2::TokenStream {
     let th = th.to_string().parse::<proc_macro2::TokenStream>().unwrap();
     let field = st.fields.iter().next().unwrap();
     let field_ty = &field.ty;
-    let from = fill_default_fields(&st.fields, &"other".parse().unwrap());
+    let from = fill_default_fields(
+        &st.fields,
+        |f| !type_is_phantom(f),
+        &"other".parse().unwrap(),
+    );
     let from = quote! {
         #name
         #from
