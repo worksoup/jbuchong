@@ -30,5 +30,7 @@ jobs:
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
         with:
-          name: jbuchong-cdylibs
-          path: '${{ github.workspace }}/rust/target/release/*.so'
+          name: jbuchong
+          path: |
+            '${{ github.workspace }}/rust/target/release/*.so'
+            '${{ github.workspace }}/rust/target/release/*.rlib'
