@@ -12,6 +12,9 @@ members = [
 default-members = ["crates/*"]
 
 [dependencies]
+jbc_base = { path = "./crates/jbc_base" }
+jbc_derive = { path = "./crates/jbc_derive" }
+jclosure = { path = "./crates/jclosure" }
 
 
 [workspace.dependencies]

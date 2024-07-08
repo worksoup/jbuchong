@@ -30,6 +30,7 @@ mod kotlin;
 mod predicate;
 mod supplier;
 mod utils;
+mod bi_consumer;
 
 pub use bi_function::*;
 pub use comparator::*;
