@@ -19,6 +19,7 @@
 
 use j4rs::errors::J4RsError;
 use j4rs::Instance;
+mod bi_consumer;
 mod bi_function;
 mod comparator;
 mod consumer;
@@ -29,18 +30,17 @@ mod kotlin;
 mod predicate;
 mod supplier;
 mod utils;
-mod bi_consumer;
 
+pub use bi_consumer::*;
 pub use bi_function::*;
 pub use comparator::*;
 pub use consumer::*;
 pub use function::*;
 pub use interface::*;
+use jbc_base::InstanceWrapper;
 pub use kotlin::*;
 pub use predicate::*;
 pub use supplier::*;
-pub use bi_consumer::*;
-use jbc_base::InstanceWrapper;
 
 const POINTER_SIZE: usize =
     size_of::<*mut dyn Fn(InstanceWrapper) -> Result<Instance, J4RsError>>();

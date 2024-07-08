@@ -1,9 +1,7 @@
 use crate::function::Function;
-use j4rs::errors::J4RsError;
-use j4rs::{Instance, InvocationArg, Jvm};
-use jbc_base::{GetInstanceTrait, Pair, TryFromInstanceTrait};
+use j4rs::{errors::J4RsError, Instance, InvocationArg, Jvm};
+use jbc_base::{self as jbuchong, GetInstanceTrait, Pair, TryFromInstanceTrait};
 use jbc_derive::GetInstanceDerive;
-use jbc_base as jbuchong;
 #[derive(GetInstanceDerive)]
 pub struct BiFunction<T1, T2, R> {
     instance: Instance,

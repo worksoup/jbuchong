@@ -1,11 +1,9 @@
 use crate::utils::raw_pointer_to_instance;
 use crate::RawPointer;
-use j4rs::errors::J4RsError;
-use j4rs::{Instance, InvocationArg, Jvm};
-use std::marker::PhantomData;
-use jbc_base::{GetInstanceTrait, InstanceWrapper, TryFromInstanceTrait};
+use j4rs::{errors::J4RsError, Instance, InvocationArg, Jvm};
+use jbc_base::{self as jbuchong, GetInstanceTrait, InstanceWrapper, TryFromInstanceTrait};
 use jbc_derive::GetInstanceDerive;
-use jbc_base as jbuchong;
+use std::marker::PhantomData;
 
 #[derive(GetInstanceDerive)]
 pub struct Consumer<T> {
@@ -37,12 +35,11 @@ where
     where
         F: Fn(T) + 'static,
     {
-        let call_from_java: Box<dyn Fn(InstanceWrapper) -> Result<(), J4RsError>> = Box::new(
-            move |value: InstanceWrapper| -> Result<(), J4RsError> {
+        let call_from_java: Box<dyn Fn(InstanceWrapper) -> Result<(), J4RsError>> =
+            Box::new(move |value: InstanceWrapper| -> Result<(), J4RsError> {
                 f(value.get::<T>()?);
                 Ok(())
-            },
-        );
+            });
         let call_from_java_raw = Box::into_raw(call_from_java);
         unsafe { std::mem::transmute(call_from_java_raw) }
     }
@@ -52,7 +49,9 @@ where
     {
         let internal_closure_raw = Self::internal_closure_as_raw_pointer(closure);
         println!("closure_to_function\n{:?}", internal_closure_raw);
-        let instance = raw_pointer_to_instance::<"io.github.worksoup.function.LumiaConsumer">(internal_closure_raw);
+        let instance = raw_pointer_to_instance::<"io.github.worksoup.function.LumiaConsumer">(
+            internal_closure_raw,
+        );
         Consumer {
             instance,
             internal_closure_raw,

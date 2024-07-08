@@ -11,7 +11,8 @@ use j4rs::{{Instance, InvocationArg, Jvm}};
 use jbuchong::{{GetInstanceTrait, TryFromInstanceTrait}};
 use jbc_derive::GetInstanceDerive;
 use jbuchong::KotlinPair;
-    "#.to_string();
+    "#
+    .to_string();
     let mut r = vec![import];
     for n in 3..=16 {
         r.push(impl_kt_func_n_(n));
@@ -28,10 +29,8 @@ fn impl_kt_func_n_(n: usize) -> String {
         .chars()
         .map(|c| format!("{c}"))
         .collect::<Vec<_>>();
-    let type_params_1 = upper_params
-        .join(", ");
-    let type_params_2 = upper_params[2..]
-        .join(", ");
+    let type_params_1 = upper_params.join(", ");
+    let type_params_2 = upper_params[2..].join(", ");
     let type_params_3 = "ABCDEFGHIJKLMNOP"[0..n]
         .chars()
         .map(|c| format!("{}: InvocationArg", c.to_lowercase()))
@@ -39,7 +38,7 @@ fn impl_kt_func_n_(n: usize) -> String {
         .join(", ");
     let type_params_4 = "ABCDEFGHIJKLMNOP"[0..n]
         .chars()
-        .map(|c| format!("{}", c.to_lowercase(), ))
+        .map(|c| format!("{}", c.to_lowercase(),))
         .collect::<Vec<_>>()
         .join(", ");
     let type_params_5 = "ABCDEFGHIJKLMNOP"[2..n]
@@ -115,12 +114,11 @@ fn impl_get_as<F: Fn(proc_macro2::TokenStream) -> proc_macro2::TokenStream>(
             if len != 1 {
                 panic!("存在多个 `Instance` 类型的字段！请确保只有一个。")
             }
-            gen_fn_content(
-                if let Some(fields_name) = fields_name {
-                    fields_name.to_token_stream()
-                } else {
-                    th.to_string().parse().unwrap()
-                })
+            gen_fn_content(if let Some(fields_name) = fields_name {
+                fields_name.to_token_stream()
+            } else {
+                th.to_string().parse().unwrap()
+            })
         }
         Data::Enum(data_enum) => {
             let variants = &data_enum.variants;
@@ -193,10 +191,7 @@ pub fn as_instance_derive(input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let name = &ast.ident;
     let generics = &ast.generics;
-    let r#impl = impl_get_as(&ast.data, name,
-                             |c| {
-                                 quote!(&self.#c)
-                             }, quote!(as_instance));
+    let r#impl = impl_get_as(&ast.data, name, |c| quote!(&self.#c), quote!(as_instance));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let gen = quote! {
         impl #impl_generics jbuchong::AsInstanceTrait for #name #ty_generics #where_clause {
@@ -216,7 +211,10 @@ fn type_is_instance(field: &Field) -> bool {
     }
     false
 }
-fn fill_default_fields(fields: &Fields, value_name: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+fn fill_default_fields(
+    fields: &Fields,
+    value_name: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
     let mut tokens = proc_macro2::TokenStream::new();
     let mut instance_filled = false;
     match fields {
@@ -247,7 +245,9 @@ fn fill_default_fields(fields: &Fields, value_name: &proc_macro2::TokenStream) -
                 (#tokens)
             }
         }
-        Fields::Unit => { panic!("不支持无字段结构体！") }
+        Fields::Unit => {
+            panic!("不支持无字段结构体！")
+        }
     }
 }
 /// ### `TryFromInstanceDerive`
@@ -423,7 +423,10 @@ fn type_is_phantom(field: &Field) -> bool {
     }
     false
 }
-fn find_needed_field_index<F: Fn(&Field) -> bool>(fields: &Fields, is_need: F) -> (usize, usize, Option<&proc_macro2::Ident>) {
+fn find_needed_field_index<F: Fn(&Field) -> bool>(
+    fields: &Fields,
+    is_need: F,
+) -> (usize, usize, Option<&proc_macro2::Ident>) {
     let mut len = 0;
     let mut th = 0;
     let mut name = None;
@@ -444,46 +447,45 @@ fn gen_impl(input: DeriveInput) -> proc_macro2::TokenStream {
         Data::Struct(st) => st,
         _ => panic!("NewType can only be derived for single-field structs"),
     };
-    let (len, th, field_name) = find_needed_field_index(&st.fields, |field: &Field| { !type_is_phantom(field) });
+    let (len, th, field_name) =
+        find_needed_field_index(&st.fields, |field: &Field| !type_is_phantom(field));
     if len != 1 {
         panic!("NewType can only be derived for single-field structs")
     }
     let th = th.to_string().parse::<proc_macro2::TokenStream>().unwrap();
-    let field = st.fields.iter().nth(0).unwrap();
+    let field = st.fields.iter().next().unwrap();
     let field_ty = &field.ty;
     let from = fill_default_fields(&st.fields, &"other".parse().unwrap());
     let from = quote! {
-                #name
-                #from
-            };
-    let (deref, deref_mut, into_inner) =
-        if let Some(field_name) = field_name {
-            let deref = quote! {
-                &self.#field_name
-            };
-            let deref_mut = quote! {
-                &mut self.#field_name
-            };
-            let into_inner = quote! {
-                self.#field_name
-            };
-            (deref, deref_mut, into_inner)
-        } else {
-            let deref = quote! {
-                &self.
-                #th
-            };
-            let deref_mut = quote! {
-                &mut self.
-                #th
-            };
-            let into_inner = quote! {
-                self.
-                #th
-            };
-            (deref, deref_mut, into_inner)
+        #name
+        #from
+    };
+    let (deref, deref_mut, into_inner) = if let Some(field_name) = field_name {
+        let deref = quote! {
+            &self.#field_name
         };
-
+        let deref_mut = quote! {
+            &mut self.#field_name
+        };
+        let into_inner = quote! {
+            self.#field_name
+        };
+        (deref, deref_mut, into_inner)
+    } else {
+        let deref = quote! {
+            &self.
+            #th
+        };
+        let deref_mut = quote! {
+            &mut self.
+            #th
+        };
+        let into_inner = quote! {
+            self.
+            #th
+        };
+        (deref, deref_mut, into_inner)
+    };
 
     let from = quote! {
         impl #impl_generics From<#field_ty> for #name #ty_generics #where_clause {
@@ -523,4 +525,20 @@ fn gen_impl(input: DeriveInput) -> proc_macro2::TokenStream {
     quote! {
         #from #deref #deref_mut #into_inner
     }
+}
+/// ### `java_all`
+///
+/// 同时应用 [`GetInstanceDerive`], [`AsInstanceDerive`], [`FromInstanceDerive`] 和 [`java_type`](macro@java_type).
+///
+/// 接受一个字符串字面值参数传递给 `java_type` 属性。
+#[proc_macro_attribute]
+pub fn java_all(type_name: TokenStream, input: TokenStream) -> TokenStream {
+    let ast: &DeriveInput = &syn::parse(input).unwrap();
+    let type_name: syn::LitStr = syn::parse(type_name).unwrap();
+    let gen = quote! {
+        #[derive(jbuchong::AsInstanceDerive, jbuchong::TryFromInstanceDerive, jbuchong::GetInstanceDerive)]
+        #[jbuchong::java_type(#type_name)]
+        #ast
+    };
+    gen.into()
 }

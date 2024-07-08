@@ -2,18 +2,14 @@
 mod tests {
     // use std::cmp::Ordering;
 
-    use crate::bi_function::BiFunction;
-    use crate::comparator::Comparator;
-    use crate::consumer::Consumer;
-    use crate::function::Function;
-    use crate::predicate::Predicate;
-    use crate::{Func0, Func1, Func2, Func3, Supplier};
-    use j4rs::errors::J4RsError;
-    use j4rs::{ClasspathEntry, Instance, InvocationArg, Jvm, JvmBuilder};
-    use std::cmp::Ordering;
-    use jbc_base::GetInstanceTrait;
+    use crate::{
+        bi_function::BiFunction, comparator::Comparator, consumer::Consumer, function::Function,
+        predicate::Predicate, Func0, Func1, Func2, Func3, Supplier,
+    };
+    use j4rs::{errors::J4RsError, ClasspathEntry, Instance, InvocationArg, Jvm, JvmBuilder};
+    use jbc_base::{self as jbuchong, GetInstanceTrait};
     use jbc_derive::TryFromInstanceDerive;
-    use jbc_base as jbuchong;
+    use std::cmp::Ordering;
 
     //
     // use crate::{
@@ -198,7 +194,7 @@ mod tests {
     #[test]
     fn closure_to_func3_works() {
         let _jvm = get_a_jvm_for_test();
-        let f = move |a: bool, b: bool, c: bool, | -> bool {
+        let f = move |a: bool, b: bool, c: bool| -> bool {
             let r = a | b | c;
             println!("a = {a}\nThe result is `{}`.", r);
             r
@@ -262,13 +258,15 @@ mod tests {
             .map(|c| format!("in {c}"))
             .collect::<Vec<_>>()
             .join(", ");
-        let type_params_2 = [vec!["Pair<A, B>".to_string()],
+        let type_params_2 = [
+            vec!["Pair<A, B>".to_string()],
             "ABCDEFGHIJKLMNOP"[2..pc]
                 .chars()
                 .map(|c| c.to_string())
-                .collect::<Vec<_>>()]
-            .concat()
-            .join(", ");
+                .collect::<Vec<_>>(),
+        ]
+        .concat()
+        .join(", ");
         let type_params_3 = "ABCDEFGHIJKLMNOP"[0..pc]
             .chars()
             .map(|c| c.to_string())
@@ -280,10 +278,12 @@ mod tests {
             .map(|(pc, c)| format!("p{pc}:{c}"))
             .collect::<Vec<_>>()
             .join(", ");
-        let type_params_5 = [vec!["Pair(p0, p1)".to_string()],
-            (2..pc).map(|c| format!("p{c}")).collect::<Vec<_>>()]
-            .concat()
-            .join(", ");
+        let type_params_5 = [
+            vec!["Pair(p0, p1)".to_string()],
+            (2..pc).map(|c| format!("p{c}")).collect::<Vec<_>>(),
+        ]
+        .concat()
+        .join(", ");
         format!(
             r#"package io.github.worksoup.function
 

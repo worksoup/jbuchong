@@ -1,16 +1,14 @@
-use j4rs::errors::J4RsError;
-use j4rs::{Instance, InvocationArg, Jvm};
-use jbc_base::{GetInstanceTrait, Pair, TryFromInstanceTrait};
-use jbc_derive::GetInstanceDerive;
 use crate::Consumer;
-use jbc_base as jbuchong;
+use j4rs::{errors::J4RsError, Instance, InvocationArg, Jvm};
+use jbc_base::{self as jbuchong, GetInstanceTrait, Pair, TryFromInstanceTrait};
+use jbc_derive::GetInstanceDerive;
 
 #[derive(GetInstanceDerive)]
-pub struct BiConsumer<T1, T2, > {
+pub struct BiConsumer<T1, T2> {
     instance: Instance,
     func: Consumer<Pair<T1, T2>>,
 }
-impl<T1, T2, > BiConsumer<T1, T2, > {
+impl<T1, T2> BiConsumer<T1, T2> {
     pub fn drop(self) {
         self.func.drop()
     }
@@ -21,12 +19,12 @@ impl<T1, T2, > BiConsumer<T1, T2, > {
     }
 }
 
-impl<T1, T2, > BiConsumer<T1, T2, >
+impl<T1, T2> BiConsumer<T1, T2>
 where
     T1: TryFromInstanceTrait,
     T2: TryFromInstanceTrait,
 {
-    pub fn new<F>(closure: F) -> BiConsumer<T1, T2, >
+    pub fn new<F>(closure: F) -> BiConsumer<T1, T2>
     where
         F: Fn(T1, T2) + 'static,
     {

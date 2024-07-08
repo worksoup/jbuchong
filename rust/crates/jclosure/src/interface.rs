@@ -1,9 +1,9 @@
+#![allow(clippy::unused_unit, clippy::not_unsafe_ptr_arg_deref)]
 use crate::POINTER_SIZE;
-use j4rs::errors::J4RsError;
-use j4rs::prelude::*;
+use j4rs::{errors::J4RsError, prelude::*};
 use j4rs_derive::*;
-use std::intrinsics::transmute;
 use jbc_base::{InstanceWrapper, TryFromInstanceTrait};
+use std::intrinsics::transmute;
 
 fn lumia_func_apply_internal<T>(
     raw_pointer_instance: Instance,
@@ -13,8 +13,7 @@ fn lumia_func_apply_internal<T>(
         .unwrap()
         .to_rust(raw_pointer_instance)
         .unwrap();
-    let func: *mut dyn Fn(InstanceWrapper) -> Result<T, J4RsError> =
-        unsafe { transmute(func_raw) };
+    let func: *mut dyn Fn(InstanceWrapper) -> Result<T, J4RsError> = unsafe { transmute(func_raw) };
     let val = InstanceWrapper::try_from_instance(arg).and_then(|data| unsafe { (*func)(data) });
     val.map_err(|error| format!("{}", error))
 }

@@ -1,6 +1,6 @@
-use std::{collections::HashSet, hash::Hash};
-use j4rs::{Instance, InvocationArg, Jvm};
 use crate::TryFromInstanceTrait;
+use j4rs::{Instance, InvocationArg, Jvm};
+use std::{collections::HashSet, hash::Hash};
 
 pub fn primitive_byte_array_to_string(jvm: &Jvm, instance: Instance) -> Instance {
     // let instance = jvm.clone_instance(instance).unwrap();
@@ -9,7 +9,7 @@ pub fn primitive_byte_array_to_string(jvm: &Jvm, instance: Instance) -> Instance
         "primitiveByteArrayToString",
         &[InvocationArg::from(instance)],
     )
-        .unwrap()
+    .unwrap()
 }
 
 #[inline]
@@ -19,10 +19,14 @@ pub fn is_instance_of(instance: &Instance, class_name: &str) -> bool {
     let instance = InvocationArg::from(instance);
     let class_name = InvocationArg::try_from(class_name).unwrap();
     jvm.to_rust(
-        jvm.invoke_static("io.github.worksoup.LumiaUtils", "isInstanceOf", &[instance, class_name])
-            .unwrap(),
+        jvm.invoke_static(
+            "io.github.worksoup.LumiaUtils",
+            "isInstanceOf",
+            &[instance, class_name],
+        )
+        .unwrap(),
     )
-        .unwrap()
+    .unwrap()
 }
 
 #[inline]
@@ -46,9 +50,9 @@ pub fn instance_is_null(instance: &Instance) -> bool {
             "isNull",
             &[InvocationArg::from(jvm.clone_instance(instance).unwrap())],
         )
-            .unwrap(),
+        .unwrap(),
     )
-        .unwrap()
+    .unwrap()
 }
 
 #[inline]

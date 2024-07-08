@@ -1,5 +1,4 @@
-use j4rs::errors::J4RsError;
-use j4rs::{Instance, InvocationArg, Jvm};
+use j4rs::{errors::J4RsError, Instance, InvocationArg, Jvm};
 use std::cmp::Ordering;
 
 /// 这个特征可以返回 java 中 Class 对象，监听事件的时候用。

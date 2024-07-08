@@ -1,11 +1,8 @@
-use crate::utils::raw_pointer_to_instance;
-use crate::RawPointer;
-use j4rs::errors::J4RsError;
-use j4rs::{Instance, InvocationArg, Jvm};
-use std::marker::PhantomData;
-use jbc_base::{GetInstanceTrait, TryFromInstanceTrait};
+use crate::{utils::raw_pointer_to_instance, RawPointer};
+use j4rs::{errors::J4RsError, Instance, InvocationArg, Jvm};
+use jbc_base::{self as jbuchong, GetInstanceTrait, TryFromInstanceTrait};
 use jbc_derive::GetInstanceDerive;
-use jbc_base as jbuchong;
+use std::marker::PhantomData;
 
 #[derive(GetInstanceDerive)]
 pub struct Supplier<R> {
@@ -50,7 +47,9 @@ where
         F: Fn() -> R + 'static,
     {
         let internal_closure_raw = Self::internal_closure_as_raw_pointer(closure);
-        let instance = raw_pointer_to_instance::<"io.github.worksoup.function.LumiaSupplier">(internal_closure_raw);
+        let instance = raw_pointer_to_instance::<"io.github.worksoup.function.LumiaSupplier">(
+            internal_closure_raw,
+        );
         Supplier {
             instance,
             internal_closure_raw,
