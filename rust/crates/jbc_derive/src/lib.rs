@@ -252,7 +252,7 @@ fn fill_default_fields(
 }
 /// ### `TryFromInstanceDerive`
 ///
-/// 为特定的结构体和枚举类型实现 [`TryFromInstanceTrait`](jbuchong::env::TryFromInstanceTrait).
+/// 为特定的结构体和枚举类型实现 [`TryFromInstanceTrait`](jbuchong::TryFromInstanceTrait).
 ///
 /// 这些类型需要满足如下条件：
 ///
@@ -311,10 +311,10 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
                     };
                     let ident = &variant.ident;
                     impl_tokens.extend(quote!(
-                        if <#ty as jbuchong::env::GetClassTypeTrait>::is_this_type(&instance) {
+                        if <#ty as jbuchong::GetClassTypeTrait>::is_this_type(&instance) {
                             #name::#ident(
                                 #ty::try_from_instance(
-                                    <#ty as jbuchong::env::GetClassTypeTrait>::cast_to_this_type(instance)
+                                    <#ty as jbuchong::GetClassTypeTrait>::cast_to_this_type(instance)
                                 )?
                             )
                         } else
@@ -332,7 +332,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
                 };
                 let fall_arm_ident = &fall_arm.ident;
                 impl_tokens.extend(quote!(
-                    {#name::#fall_arm_ident(<#fall_arm_ty as jbuchong::env::TryFromInstanceTrait>::try_from_instance(instance)?)}
+                    {#name::#fall_arm_ident(<#fall_arm_ty as jbuchong::TryFromInstanceTrait>::try_from_instance(instance)?)}
                 ));
             } else {
                 impl_tokens.extend(quote!({ panic!("意料之外的类型！") }))
@@ -354,7 +354,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
 
 /// ### `java_type`
 //
-/// 为结构体、枚举等实现 [`GetClassTypeTrait`](jbuchong::env::GetClassTypeTrait).
+/// 为结构体、枚举等实现 [`GetClassTypeTrait`](jbuchong::GetClassTypeTrait).
 ///
 /// 接受一个字符串字面值参数，类似于此：
 ///
