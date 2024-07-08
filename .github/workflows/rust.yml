@@ -21,20 +21,18 @@ jobs:
             toolchain: nightly
             override: true
             components: rustfmt, clippy
-      - name: cd ./rust
-        run: cd ./rust
       - name: Run cargo check
         uses: actions-rs/cargo@v1
         with:
-          command: check
+          command: check --manifest-path ./rust/Cargo.toml
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
-          command: clippy
+          command: clippy --manifest-path ./rust/Cargo.toml
       - name: Run cargo build
         uses: actions-rs/cargo@v1
         with:
-          command: build --release
+          command: build --release --manifest-path ./rust/Cargo.toml
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
         with:
