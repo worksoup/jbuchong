@@ -5,6 +5,7 @@ use j4rs::{Instance, InvocationArg, Jvm};
 use std::marker::PhantomData;
 use jbc_base::{GetInstanceTrait, TryFromInstanceTrait};
 use jbc_derive::GetInstanceDerive;
+use jbc_base as jbuchong;
 
 #[derive(GetInstanceDerive)]
 pub struct Supplier<R> {

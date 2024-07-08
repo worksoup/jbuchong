@@ -1,13 +1,14 @@
 use j4rs::errors::J4RsError;
 use j4rs::{Instance, InvocationArg, Jvm};
-use jbc_base::{DataWrapper, GetInstanceTrait, TryFromInstanceTrait};
+use jbc_base::{GetInstanceTrait, Pair, TryFromInstanceTrait};
 use jbc_derive::GetInstanceDerive;
 use crate::Consumer;
+use jbc_base as jbuchong;
 
 #[derive(GetInstanceDerive)]
 pub struct BiConsumer<T1, T2, > {
     instance: Instance,
-    func: Consumer<DataWrapper<(T1, T2)>, >,
+    func: Consumer<Pair<T1, T2>>,
 }
 impl<T1, T2, > BiConsumer<T1, T2, > {
     pub fn drop(self) {
@@ -29,8 +30,8 @@ where
     where
         F: Fn(T1, T2) + 'static,
     {
-        let internal_fn = move |v: DataWrapper<(T1, T2)>| {
-            let (v1, v2) = v.get_pair();
+        let internal_fn = move |v: Pair<T1, T2>| {
+            let (v1, v2) = v.get_pair().unwrap();
             closure(v1, v2)
         };
         let func = Consumer::new(internal_fn);

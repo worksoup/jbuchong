@@ -19,7 +19,6 @@
 
 use j4rs::errors::J4RsError;
 use j4rs::Instance;
-use jbc_base::{DataWrapper, DefaultCast};
 mod bi_function;
 mod comparator;
 mod consumer;
@@ -41,9 +40,10 @@ pub use kotlin::*;
 pub use predicate::*;
 pub use supplier::*;
 pub use bi_consumer::*;
+use jbc_base::InstanceWrapper;
 
 const POINTER_SIZE: usize =
-    size_of::<*mut dyn Fn(DataWrapper<Instance, DefaultCast>) -> Result<Instance, J4RsError>>();
+    size_of::<*mut dyn Fn(InstanceWrapper) -> Result<Instance, J4RsError>>();
 type RawPointer = [i8; POINTER_SIZE];
 
 // impl Drop for comparator::ComparatorRaw {

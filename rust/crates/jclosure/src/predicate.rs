@@ -4,6 +4,7 @@ use j4rs::errors::J4RsError;
 use j4rs::{Instance, InvocationArg, Jvm};
 use jbc_base::{GetInstanceTrait, TryFromInstanceTrait};
 use jbc_derive::GetInstanceDerive;
+use jbc_base as jbuchong;
 
 #[derive(GetInstanceDerive)]
 pub struct Predicate<T> {

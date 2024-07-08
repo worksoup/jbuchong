@@ -1,6 +1,6 @@
 //! 这里存放了开发 `mirai_j4rs` 时用到的一些宏。
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Field, Fields, Type};
 #[proc_macro]
 pub fn impl_kt_func_n(_input: TokenStream) -> TokenStream {
@@ -8,10 +8,9 @@ pub fn impl_kt_func_n(_input: TokenStream) -> TokenStream {
 use crate::Func2;
 use j4rs::errors::J4RsError;
 use j4rs::{{Instance, InvocationArg, Jvm}};
-use jbc_base::{{GetInstanceTrait, TryFromInstanceTrait}};
+use jbuchong::{{GetInstanceTrait, TryFromInstanceTrait}};
 use jbc_derive::GetInstanceDerive;
-use jbc_base::DataWrapper;
-use jbc_base::TypeName;
+use jbuchong::KotlinPair;
     "#.to_string();
     let mut r = vec![import];
     for n in 3..=16 {
@@ -60,7 +59,7 @@ fn impl_kt_func_n_(n: usize) -> String {
 #[derive(GetInstanceDerive)]
 pub struct {type_name}<{type_params_1}, R> {{
     instance: Instance,
-    func: {last_type_name}<DataWrapper<(A, B), TypeName<"kotlin.Pair">>, {type_params_2}, R>,
+    func: {last_type_name}<KotlinPair<A, B>, {type_params_2}, R>,
 }}
 impl<{type_params_1}, R> {type_name}<{type_params_1}, R> {{
     pub fn drop(self) {{
@@ -87,7 +86,7 @@ where
     where
         Func: Fn({type_params_1}) -> R + 'static,
     {{
-        let internal_fn = move |v: DataWrapper<(A, B), TypeName<"kotlin.Pair">>, {type_params_5}| -> R {{ let (a, b) = v.get_pair(); closure({type_params_4}) }};
+        let internal_fn = move |v: KotlinPair<A, B>, {type_params_5}| -> R {{ let (a, b) = v.get_pair().unwrap(); closure({type_params_4}) }};
         let func = {last_type_name}::new(internal_fn);
         let jvm = Jvm::attach_thread().unwrap();
         let instance = jvm
@@ -103,14 +102,26 @@ where
     )
 }
 
-fn impl_get_as(
+fn impl_get_as<F: Fn(proc_macro2::TokenStream) -> proc_macro2::TokenStream>(
     ast_data: &Data,
     name: &proc_macro2::Ident,
-    struct_impl: proc_macro2::TokenStream,
+    gen_fn_content: F,
     fn_name: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     match &ast_data {
-        Data::Struct(_) => struct_impl,
+        Data::Struct(st) => {
+            let fields = &st.fields;
+            let (len, th, fields_name) = find_needed_field_index(fields, type_is_instance);
+            if len != 1 {
+                panic!("存在多个 `Instance` 类型的字段！请确保只有一个。")
+            }
+            gen_fn_content(
+                if let Some(fields_name) = fields_name {
+                    fields_name.to_token_stream()
+                } else {
+                    th.to_string().parse().unwrap()
+                })
+        }
         Data::Enum(data_enum) => {
             let variants = &data_enum.variants;
             let tokens = variants.iter().map(|variant| {
@@ -133,7 +144,7 @@ fn impl_get_as(
 
 /// ### `GetInstanceDerive`
 ///
-/// 为特定的结构体和枚举类型实现 [`GetInstanceTrait`](jbc_base::GetInstanceTrait).
+/// 为特定的结构体和枚举类型实现 [`GetInstanceTrait`](jbuchong::GetInstanceTrait).
 ///
 /// 这些类型需要满足如下条件：
 ///
@@ -156,12 +167,16 @@ pub fn get_instance_derive(input: TokenStream) -> TokenStream {
     let r#impl = impl_get_as(
         &ast.data,
         name,
-        quote!(j4rs::Jvm::attach_thread()?.clone_instance(&self.instance)),
+        |c| {
+            quote! {
+                j4rs::Jvm::attach_thread()?.clone_instance(&self.#c)
+            }
+        },
         quote!(get_instance),
     );
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let gen = quote! {
-        impl #impl_generics jbc_base::GetInstanceTrait for #name #ty_generics #where_clause {
+        impl #impl_generics jbuchong::GetInstanceTrait for #name #ty_generics #where_clause {
             fn get_instance(&self) -> Result<j4rs::Instance,j4rs::errors::J4RsError>{
                 #r#impl
             }
@@ -178,10 +193,13 @@ pub fn as_instance_derive(input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let name = &ast.ident;
     let generics = &ast.generics;
-    let r#impl = impl_get_as(&ast.data, name, quote!(&self.instance), quote!(as_instance));
+    let r#impl = impl_get_as(&ast.data, name,
+                             |c| {
+                                 quote!(&self.#c)
+                             }, quote!(as_instance));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let gen = quote! {
-        impl #impl_generics jbc_base::AsInstanceTrait for #name #ty_generics #where_clause {
+        impl #impl_generics jbuchong::AsInstanceTrait for #name #ty_generics #where_clause {
             fn as_instance(&self) -> &j4rs::Instance{
                 #r#impl
             }
@@ -189,9 +207,52 @@ pub fn as_instance_derive(input: TokenStream) -> TokenStream {
     };
     gen.into()
 }
+
+fn type_is_instance(field: &Field) -> bool {
+    if let Type::Path(ref ty) = field.ty {
+        if let Some(ty) = ty.path.segments.last() {
+            return ty.ident == "Instance";
+        }
+    }
+    false
+}
+fn fill_default_fields(fields: &Fields, value_name: &proc_macro2::TokenStream) -> proc_macro2::TokenStream {
+    let mut tokens = proc_macro2::TokenStream::new();
+    let mut instance_filled = false;
+    match fields {
+        Fields::Named(fields) => {
+            for field in &fields.named {
+                let field_name = field.ident.as_ref().unwrap();
+                if type_is_instance(field) && !instance_filled {
+                    tokens.extend(quote!(#field_name:#value_name,));
+                    instance_filled = true;
+                } else {
+                    tokens.extend(quote!(#field_name:Default::default(),))
+                }
+            }
+            quote! {
+                {#tokens}
+            }
+        }
+        Fields::Unnamed(fields) => {
+            for field in &fields.unnamed {
+                if type_is_instance(field) && !instance_filled {
+                    tokens.extend(quote!(#value_name,));
+                    instance_filled = true;
+                } else {
+                    tokens.extend(quote!(Default::default(),));
+                }
+            }
+            quote! {
+                (#tokens)
+            }
+        }
+        Fields::Unit => { panic!("不支持无字段结构体！") }
+    }
+}
 /// ### `TryFromInstanceDerive`
 ///
-/// 为特定的结构体和枚举类型实现 [`TryFromInstanceTrait`](jbc_base::env::TryFromInstanceTrait).
+/// 为特定的结构体和枚举类型实现 [`TryFromInstanceTrait`](jbuchong::env::TryFromInstanceTrait).
 ///
 /// 这些类型需要满足如下条件：
 ///
@@ -212,37 +273,15 @@ pub fn as_instance_derive(input: TokenStream) -> TokenStream {
 ///   其中 `fall` 意味着未能成功转换的类型将会落到该分支中。如果没有该属性，未能成功转换时将会造成 `panic!`, 如果存在多个，则最后一个有效。
 #[proc_macro_derive(TryFromInstanceDerive, attributes(fall))]
 pub fn from_instance_derive(input: TokenStream) -> TokenStream {
-    fn type_is_phantom_data(field: &Field) -> bool {
-        if let Type::Path(ref ty) = field.ty {
-            if let Some(ty) = ty.path.segments.last() {
-                return ty.ident == "PhantomData";
-            }
-        }
-        false
-    }
-    fn fill_phantom_data_fields(fields: &Fields) -> proc_macro2::TokenStream {
-        let mut tokens = proc_macro2::TokenStream::new();
-        for field in fields {
-            if type_is_phantom_data(field) {
-                let field_name = field.ident.as_ref();
-                if let Some(field_name) = field_name {
-                    tokens.extend(quote!(#field_name:std::marker::PhantomData::default(),))
-                }
-            }
-        }
-        tokens
-    }
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let name = &ast.ident;
     let generics = &ast.generics;
     let impl_tokens = match &ast.data {
         Data::Struct(s) => {
-            let tmp = fill_phantom_data_fields(&s.fields);
+            let tmp = fill_default_fields(&s.fields, &"instance".parse().unwrap());
             quote!(
-                Self{
-                    instance,
-                    #tmp
-                }
+                Self
+                #tmp
             )
         }
         Data::Enum(e) => {
@@ -272,10 +311,10 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
                     };
                     let ident = &variant.ident;
                     impl_tokens.extend(quote!(
-                        if <#ty as jbc_base::env::GetClassTypeTrait>::is_this_type(&instance) {
+                        if <#ty as jbuchong::env::GetClassTypeTrait>::is_this_type(&instance) {
                             #name::#ident(
                                 #ty::try_from_instance(
-                                    <#ty as jbc_base::env::GetClassTypeTrait>::cast_to_this_type(instance)
+                                    <#ty as jbuchong::env::GetClassTypeTrait>::cast_to_this_type(instance)
                                 )?
                             )
                         } else
@@ -293,7 +332,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
                 };
                 let fall_arm_ident = &fall_arm.ident;
                 impl_tokens.extend(quote!(
-                    {#name::#fall_arm_ident(<#fall_arm_ty as jbc_base::env::TryFromInstanceTrait>::try_from_instance(instance)?)}
+                    {#name::#fall_arm_ident(<#fall_arm_ty as jbuchong::env::TryFromInstanceTrait>::try_from_instance(instance)?)}
                 ));
             } else {
                 impl_tokens.extend(quote!({ panic!("意料之外的类型！") }))
@@ -304,7 +343,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
     };
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let gen = quote! {
-        impl #impl_generics jbc_base::TryFromInstanceTrait for #name #ty_generics #where_clause {
+        impl #impl_generics jbuchong::TryFromInstanceTrait for #name #ty_generics #where_clause {
             fn try_from_instance(instance: j4rs::Instance) -> Result<Self,j4rs::errors::J4RsError>{
                 Ok(#impl_tokens)
             }
@@ -315,7 +354,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
 
 /// ### `java_type`
 //
-/// 为结构体、枚举等实现 [`GetClassTypeTrait`](jbc_base::env::GetClassTypeTrait).
+/// 为结构体、枚举等实现 [`GetClassTypeTrait`](jbuchong::env::GetClassTypeTrait).
 ///
 /// 接受一个字符串字面值参数，类似于此：
 ///
@@ -335,7 +374,7 @@ pub fn java_type(type_name: TokenStream, input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let gen = quote! {
         #ast
-        impl #impl_generics jbc_base::GetClassTypeTrait for #name #ty_generics #where_clause {
+        impl #impl_generics jbuchong::GetClassTypeTrait for #name #ty_generics #where_clause {
             fn get_class_type() -> j4rs::Instance {
                 j4rs::Jvm::attach_thread()
                     .unwrap()
@@ -343,7 +382,7 @@ pub fn java_type(type_name: TokenStream, input: TokenStream) -> TokenStream {
                         "io.github.worksoup.LumiaUtils",
                         "forName",
                         &[j4rs::InvocationArg::try_from(
-                            Self::get_type_name().as_str(),
+                            Self::get_type_name(),
                         )
                         .unwrap()],
                     )
@@ -352,15 +391,136 @@ pub fn java_type(type_name: TokenStream, input: TokenStream) -> TokenStream {
             fn cast_to_this_type(instance: j4rs::Instance) -> j4rs::Instance {
                 let jvm = j4rs::Jvm::attach_thread()
                     .unwrap();
-                jvm.cast(&instance, Self::get_type_name().as_str()).unwrap()
+                jvm.cast(&instance, Self::get_type_name()).unwrap()
             }
-            fn get_type_name() -> String {
-                jbc_base::MIRAI_PREFIX.to_string() + #type_name
+            fn get_type_name() -> &'static str {
+                #type_name
             }
             fn is_this_type(instance: &j4rs::Instance) -> bool {
-                jbc_base::utils::is_instance_of(&instance, Self::get_type_name().as_str())
+                jbuchong::utils::is_instance_of(&instance, Self::get_type_name())
             }
         }
     };
     gen.into()
+}
+/// fork from crate `newtype` version 0.2.1.
+/// Treat a single-field tuple struct as a "newtype"
+///
+/// This will implement `From`, `Into`, `Deref`, and `DerefMut` for the inner
+/// type.
+#[proc_macro_derive(NewType)]
+pub fn newtype(input: TokenStream) -> TokenStream {
+    let input = syn::parse::<syn::DeriveInput>(input).expect("syn parse derive input");
+
+    gen_impl(input).into()
+}
+
+fn type_is_phantom(field: &Field) -> bool {
+    if let Type::Path(ref ty) = field.ty {
+        if let Some(ty) = ty.path.segments.last() {
+            return ty.ident == "PhantomData" || ty.ident == "PhantomPinned";
+        }
+    }
+    false
+}
+fn find_needed_field_index<F: Fn(&Field) -> bool>(fields: &Fields, is_need: F) -> (usize, usize, Option<&proc_macro2::Ident>) {
+    let mut len = 0;
+    let mut th = 0;
+    let mut name = None;
+    for (th_, field) in fields.iter().enumerate() {
+        if is_need(field) {
+            len += 1;
+            th = th_;
+            name = field.ident.as_ref();
+        }
+    }
+    (len, th, name)
+}
+fn gen_impl(input: DeriveInput) -> proc_macro2::TokenStream {
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+    let name = input.ident;
+
+    let st = match input.data {
+        Data::Struct(st) => st,
+        _ => panic!("NewType can only be derived for single-field structs"),
+    };
+    let (len, th, field_name) = find_needed_field_index(&st.fields, |field: &Field| { !type_is_phantom(field) });
+    if len != 1 {
+        panic!("NewType can only be derived for single-field structs")
+    }
+    let th = th.to_string().parse::<proc_macro2::TokenStream>().unwrap();
+    let field = st.fields.iter().nth(0).unwrap();
+    let field_ty = &field.ty;
+    let from = fill_default_fields(&st.fields, &"other".parse().unwrap());
+    let from = quote! {
+                #name
+                #from
+            };
+    let (deref, deref_mut, into_inner) =
+        if let Some(field_name) = field_name {
+            let deref = quote! {
+                &self.#field_name
+            };
+            let deref_mut = quote! {
+                &mut self.#field_name
+            };
+            let into_inner = quote! {
+                self.#field_name
+            };
+            (deref, deref_mut, into_inner)
+        } else {
+            let deref = quote! {
+                &self.
+                #th
+            };
+            let deref_mut = quote! {
+                &mut self.
+                #th
+            };
+            let into_inner = quote! {
+                self.
+                #th
+            };
+            (deref, deref_mut, into_inner)
+        };
+
+
+    let from = quote! {
+        impl #impl_generics From<#field_ty> for #name #ty_generics #where_clause {
+            fn from(other: #field_ty) -> #name #ty_generics {
+                #from
+            }
+        }
+    };
+
+    let deref = quote! {
+        impl #impl_generics ::core::ops::Deref for #name #ty_generics #where_clause {
+            type Target = #field_ty;
+
+            fn deref(&self) -> &Self::Target {
+                #deref
+            }
+        }
+    };
+
+    let deref_mut = quote! {
+        impl #impl_generics ::core::ops::DerefMut for #name #ty_generics #where_clause {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                #deref_mut
+            }
+        }
+    };
+
+    let into_inner = quote! {
+        impl #impl_generics #name #ty_generics #where_clause {
+            /// Unwrap to the inner type
+            pub fn into_inner(self) -> #field_ty {
+                #into_inner
+            }
+        }
+    };
+
+    quote! {
+        #from #deref #deref_mut #into_inner
+    }
 }

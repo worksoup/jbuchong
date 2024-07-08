@@ -1,7 +1,6 @@
 use j4rs::errors::J4RsError;
 use j4rs::{Instance, InvocationArg, Jvm};
 use std::cmp::Ordering;
-use crate::{DataWrapper, TypeName};
 
 /// 这个特征可以返回 java 中 Class 对象，监听事件的时候用。
 /// 为了做泛型搞的。之后可能会改动。
@@ -11,7 +10,7 @@ pub trait GetClassTypeTrait {
 
     fn cast_to_this_type(instance: Instance) -> Instance;
 
-    fn get_type_name() -> String;
+    fn get_type_name() -> &'static str;
 
     fn is_this_type(instance: &Instance) -> bool;
 }
@@ -29,18 +28,6 @@ impl GetInstanceTrait for Ordering {
         Instance::try_from(InvocationArg::try_from(unsafe {
             *{ self as *const Ordering as *const i8 }
         })?)
-    }
-}
-impl<P1, P2> GetInstanceTrait for DataWrapper<(P1, P2)>
-where
-    P1: GetInstanceTrait,
-    P2: GetInstanceTrait,
-{
-    fn get_instance(&self) -> Result<Instance, J4RsError> {
-        let jvm = Jvm::attach_thread()?;
-        let v1 = InvocationArg::from(self.0.get_instance()?);
-        let v2 = InvocationArg::from(self.1.get_instance()?);
-        jvm.create_instance("io.github.worksoup.LumiaPair", &[v1, v2])
     }
 }
 pub trait AsInstanceTrait {
@@ -63,37 +50,6 @@ impl<T: TryFromInstanceTrait> FromInstanceTrait for T {
 impl TryFromInstanceTrait for bool {
     fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
         Jvm::attach_thread()?.to_rust(instance)
-    }
-}
-
-impl<P1, P2> TryFromInstanceTrait for DataWrapper<(P1, P2)>
-where
-    P1: TryFromInstanceTrait,
-    P2: TryFromInstanceTrait,
-{
-    fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
-        let jvm = Jvm::attach_thread()?;
-        let instance = jvm.cast(&instance, "io.github.worksoup.LumiaPair")?;
-        let val1 = jvm.invoke(&instance, "first", InvocationArg::empty())?;
-        let val2 = jvm.invoke(&instance, "second", InvocationArg::empty())?;
-        let val1 = P1::try_from_instance(val1)?;
-        let val2 = P2::try_from_instance(val2)?;
-        Ok((val1, val2).into())
-    }
-}
-impl<P1, P2> TryFromInstanceTrait for DataWrapper<(P1, P2), TypeName<"kotlin.Pair">>
-where
-    P1: TryFromInstanceTrait,
-    P2: TryFromInstanceTrait,
-{
-    fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
-        let jvm = Jvm::attach_thread()?;
-        let instance = jvm.cast(&instance, Self::get_marker().get_type_name())?;
-        let val1 = jvm.invoke(&instance, "getFirst", InvocationArg::empty())?;
-        let val2 = jvm.invoke(&instance, "getSecond", InvocationArg::empty())?;
-        let val1 = P1::try_from_instance(val1)?;
-        let val2 = P2::try_from_instance(val2)?;
-        Ok((val1, val2).into())
     }
 }
 

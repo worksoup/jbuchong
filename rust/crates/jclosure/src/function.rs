@@ -3,8 +3,9 @@ use crate::RawPointer;
 use j4rs::errors::J4RsError;
 use j4rs::{Instance, InvocationArg, Jvm};
 use std::marker::PhantomData;
-use jbc_base::{DataWrapper, GetInstanceTrait, TryFromInstanceTrait};
+use jbc_base::{GetInstanceTrait, InstanceWrapper, TryFromInstanceTrait};
 use jbc_derive::GetInstanceDerive;
+use jbc_base as jbuchong;
 
 #[derive(GetInstanceDerive)]
 pub struct Function<T, R> {
@@ -16,7 +17,7 @@ pub struct Function<T, R> {
 impl<T, R> Function<T, R> {
     unsafe fn get_internal_closure_raw(
         &self,
-    ) -> *mut dyn Fn(DataWrapper<Instance>) -> Result<Instance, J4RsError> {
+    ) -> *mut dyn Fn(InstanceWrapper) -> Result<Instance, J4RsError> {
         unsafe { std::mem::transmute(self.internal_closure_raw) }
     }
     pub fn drop(self) {
@@ -43,9 +44,9 @@ where
     where
         F: Fn(T) -> R + 'static,
     {
-        let call_from_java: Box<dyn Fn(DataWrapper<Instance>) -> Result<Instance, J4RsError>> =
+        let call_from_java: Box<dyn Fn(InstanceWrapper) -> Result<Instance, J4RsError>> =
             Box::new(
-                move |value: DataWrapper<Instance>| -> Result<Instance, J4RsError> {
+                move |value: InstanceWrapper| -> Result<Instance, J4RsError> {
                     f(value.get::<T>()?).get_instance()
                 },
             );

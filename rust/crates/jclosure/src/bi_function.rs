@@ -1,13 +1,13 @@
 use crate::function::Function;
 use j4rs::errors::J4RsError;
 use j4rs::{Instance, InvocationArg, Jvm};
-use jbc_base::{DataWrapper, GetInstanceTrait, TryFromInstanceTrait};
+use jbc_base::{GetInstanceTrait, Pair, TryFromInstanceTrait};
 use jbc_derive::GetInstanceDerive;
-
+use jbc_base as jbuchong;
 #[derive(GetInstanceDerive)]
 pub struct BiFunction<T1, T2, R> {
     instance: Instance,
-    func: Function<DataWrapper<(T1, T2)>, R>,
+    func: Function<Pair<T1, T2>, R>,
 }
 impl<T1, T2, R> BiFunction<T1, T2, R> {
     pub fn drop(self) {
@@ -35,8 +35,8 @@ where
     where
         F: Fn(T1, T2) -> R + 'static,
     {
-        let internal_fn = move |v: DataWrapper<(T1, T2)>| -> R {
-            let (v1, v2) = v.get_pair();
+        let internal_fn = move |v: Pair<T1, T2>| -> R {
+            let (v1, v2) = v.get_pair().unwrap();
             closure(v1, v2)
         };
         let func = Function::new(internal_fn);

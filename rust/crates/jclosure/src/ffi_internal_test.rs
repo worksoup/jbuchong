@@ -13,6 +13,7 @@ mod tests {
     use std::cmp::Ordering;
     use jbc_base::GetInstanceTrait;
     use jbc_derive::TryFromInstanceDerive;
+    use jbc_base as jbuchong;
 
     //
     // use crate::{
@@ -24,7 +25,6 @@ mod tests {
     struct X {
         instance: Instance,
     }
-
     impl GetInstanceTrait for X {
         fn get_instance(&self) -> Result<Instance, J4RsError> {
             let jvm = Jvm::attach_thread().unwrap();
