@@ -1,4 +1,4 @@
-name: Rust
+name: Rust Check
 
 on:
   push:
@@ -25,12 +25,3 @@ jobs:
         run: cargo -C ./rust -Z unstable-options check
       - name: Run cargo clippy
         run: cargo -C ./rust -Z unstable-options clippy
-      - name: Run cargo build
-        run: cargo -C ./rust -Z unstable-options build --release
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: jbuchong
-          path: |
-            '${{ github.workspace }}/rust/target/release/**.so'
-            '${{ github.workspace }}/rust/target/release/**.rlib'
