@@ -1,0 +1,10 @@
+/target
+/Cargo.lock
+contact_derive/target/
+contact_derive/Cargo.lock
+.vscode/
+.idea/
+.settings/
+.project
+/working_dir/
+/KFCFactory.json

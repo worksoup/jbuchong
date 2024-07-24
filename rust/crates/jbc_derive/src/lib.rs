@@ -1,7 +1,8 @@
 //! 这里存放了开发 `mirai_j4rs` 时用到的一些宏。
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{Data, DeriveInput, Field, Fields, Type};
+use std::collections::HashMap;
+use syn::{Data, DeriveInput, Field, Fields, GenericParam, Type};
 #[proc_macro]
 pub fn impl_kt_func_n(_input: TokenStream) -> TokenStream {
     let import = r#"
@@ -370,12 +371,61 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
 ///
 /// 对结构体或枚举等没有特殊要求。
 #[proc_macro_attribute]
-pub fn java_type(type_name: TokenStream, input: TokenStream) -> TokenStream {
-    let ast: &DeriveInput = &syn::parse(input).unwrap();
-    let type_name: &syn::LitStr = &syn::parse(type_name).expect("类型名称请用字符串表示！");
+pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let ast: &DeriveInput = &mut syn::parse(input).unwrap();
+    let type_name_and_attr = type_name_and_attr.to_string();
+    let mut type_name_and_attr = type_name_and_attr
+        .split(',')
+        .map(|s| s.trim())
+        .collect::<Vec<_>>();
+    let type_name = type_name_and_attr.get(0).expect("请指定 java 类型！");
+    let type_name: &syn::LitStr = &syn::parse(type_name.parse().expect("类型名称请用字符串表示！"))
+        .expect("类型名称请用字符串表示！");
     let name = &ast.ident;
-    let generics = &ast.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    type_name_and_attr.remove(0);
+    let mut generics = ast.generics.clone();
+    let attrs = type_name_and_attr
+        .into_iter()
+        .map(|attr| {
+            let attr = attr.split('=').map(|s| s.trim()).collect::<Vec<_>>();
+            (
+                *attr.get(0).expect("泛型参数指定格式错误！"),
+                *attr.get(1).expect("泛型参数指定格式错误！"),
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    generics.params = generics
+        .params
+        .clone()
+        .into_iter()
+        .filter(|p| match p {
+            GenericParam::Lifetime(_) => true,
+            GenericParam::Type(t) => !attrs.contains_key(t.ident.to_string().as_str()),
+            GenericParam::Const(c) => !attrs.contains_key(c.ident.to_string().as_str()),
+        })
+        .collect();
+    let (_, ty_generics, _) = ast.generics.split_for_impl();
+    let ty_generics = ty_generics.to_token_stream().to_string();
+    let ty_generics = ty_generics
+        .trim()
+        .trim_start_matches('<')
+        .trim_end_matches('>')
+        .split(',')
+        .map(|s| {
+            let s = s.trim();
+            attrs.get(s).map(|&ty| ty).unwrap_or(s)
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    let ty_generics: proc_macro2::TokenStream = if ty_generics.is_empty() {
+        ty_generics
+    } else {
+        format!("<{ty_generics}>")
+    }
+    .parse()
+    .unwrap();
+    let (impl_generics, _, where_clause) = generics.split_for_impl();
+    // let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let gen = quote! {
         #ast
         impl #impl_generics jbuchong::GetClassTypeTrait for #name #ty_generics #where_clause {
