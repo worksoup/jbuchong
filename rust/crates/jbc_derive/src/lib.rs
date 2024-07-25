@@ -219,7 +219,7 @@ pub fn to_arg_derive(input: TokenStream) -> TokenStream {
         name,
         |c| {
             quote! {
-                Ok(j4rs::InvocationArg::try_from(j4rs::Jvm::attach_thread()?.clone_instance(&self.#c))?)
+                j4rs::InvocationArg::try_from(j4rs::Jvm::attach_thread()?.clone_instance(&self.#c))
             }
         },
         quote!(to_arg),
