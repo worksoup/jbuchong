@@ -58,3 +58,29 @@ impl TryFromInstanceTrait for Ordering {
         Ok(cmp_result.cmp(&0))
     }
 }
+/// 该特型表示可以将该类型构造为 [`InvocationArg`], 方便作为 java 调用的参数传入。
+pub trait ToArgTrait {
+    fn to_arg(&self) -> Result<InvocationArg, J4RsError>;
+}
+/// 该特型表示可以将该类型转换为 [`InvocationArg`], 方便作为 java 调用的参数传入。
+pub trait IntoArgTrait {
+    fn into_arg(self) -> Result<InvocationArg, J4RsError>;
+}
+
+impl<T> ToArgTrait for T
+where
+    T: Copy,
+    InvocationArg: TryFrom<T, Error = J4RsError>,
+{
+    default fn to_arg(&self) -> Result<InvocationArg, J4RsError> {
+        InvocationArg::try_from(*self)
+    }
+}
+impl<T> IntoArgTrait for T
+where
+    InvocationArg: TryFrom<T, Error = J4RsError>,
+{
+    default fn into_arg(self) -> Result<InvocationArg, J4RsError> {
+        InvocationArg::try_from(self)
+    }
+}

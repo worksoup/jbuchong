@@ -178,7 +178,7 @@ pub fn get_instance_derive(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let gen = quote! {
         impl #impl_generics jbuchong::GetInstanceTrait for #name #ty_generics #where_clause {
-            fn get_instance(&self) -> Result<j4rs::Instance,j4rs::errors::J4RsError>{
+            fn get_instance(&self) -> Result<j4rs::Instance, j4rs::errors::J4RsError> {
                 #r#impl
             }
         }
@@ -199,6 +199,63 @@ pub fn as_instance_derive(input: TokenStream) -> TokenStream {
     let gen = quote! {
         impl #impl_generics jbuchong::AsInstanceTrait for #name #ty_generics #where_clause {
             fn as_instance(&self) -> &j4rs::Instance{
+                #r#impl
+            }
+        }
+    };
+    gen.into()
+}
+
+/// ### `ToArgDerive`
+///
+/// 与 [`GetInstanceDerive`] 类似。
+#[proc_macro_derive(ToArgDerive)]
+pub fn to_arg_derive(input: TokenStream) -> TokenStream {
+    let ast: &DeriveInput = &syn::parse(input).unwrap();
+    let name = &ast.ident;
+    let generics = &ast.generics;
+    let r#impl = impl_get_as(
+        &ast.data,
+        name,
+        |c| {
+            quote! {
+                Ok(j4rs::InvocationArg::try_from(j4rs::Jvm::attach_thread()?.clone_instance(&self.#c))?)
+            }
+        },
+        quote!(to_arg),
+    );
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let gen = quote! {
+        impl #impl_generics jbuchong::ToArgTrait for #name #ty_generics #where_clause {
+            fn to_arg(&self) -> Result<j4rs::InvocationArg, j4rs::errors::J4RsError>{
+                #r#impl
+            }
+        }
+    };
+    gen.into()
+}
+/// ### `IntoArgDerive`
+///
+/// 与 [`GetInstanceDerive`] 类似。
+#[proc_macro_derive(IntoArgDerive)]
+pub fn into_arg_derive(input: TokenStream) -> TokenStream {
+    let ast: &DeriveInput = &syn::parse(input).unwrap();
+    let name = &ast.ident;
+    let generics = &ast.generics;
+    let r#impl = impl_get_as(
+        &ast.data,
+        name,
+        |c| {
+            quote! {
+                Ok(j4rs::InvocationArg::try_from(self.#c)?)
+            }
+        },
+        quote!(to_arg),
+    );
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let gen = quote! {
+        impl #impl_generics jbuchong::IntoArgTrait for #name #ty_generics #where_clause {
+            fn into_arg(self) -> Result<j4rs::InvocationArg, j4rs::errors::J4RsError>{
                 #r#impl
             }
         }
