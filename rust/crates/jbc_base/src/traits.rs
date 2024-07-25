@@ -46,16 +46,24 @@ impl<T: TryFromInstanceTrait> FromInstanceTrait for T {
         Self::try_from_instance(instance).unwrap()
     }
 }
-impl TryFromInstanceTrait for bool {
-    fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
-        Jvm::attach_thread()?.to_rust(instance)
-    }
+macro_rules! impl_try_from_instance {
+    ($($type:ty),+) => {
+        $(
+            impl TryFromInstanceTrait for $type {
+                fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
+                    Jvm::attach_thread()?.to_rust(instance)
+                }
+            }
+        )+
+    };
 }
 
+impl_try_from_instance!(String, bool, char, i8, i16, i32, i64, f32, f64);
+
+/// for `Comparator`.
 impl TryFromInstanceTrait for Ordering {
     fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
-        let cmp_result: i32 = Jvm::attach_thread().unwrap().to_rust(instance).unwrap();
-        Ok(cmp_result.cmp(&0))
+        Ok(i32::try_from_instance(instance)?.cmp(&0))
     }
 }
 /// 该特型表示可以将该类型构造为 [`InvocationArg`], 方便作为 java 调用的参数传入。
