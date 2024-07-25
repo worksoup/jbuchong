@@ -16,7 +16,6 @@
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 #![feature(result_flattening)]
-#![feature(unsized_const_parameters)]
 
 use j4rs::errors::J4RsError;
 use j4rs::Instance;

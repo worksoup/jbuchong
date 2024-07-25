@@ -55,7 +55,8 @@ where
         let origin_func: *mut dyn Fn() -> R = Box::into_raw(Box::new(closure));
         let origin_func_raw: RawPointer = unsafe { std::mem::transmute(origin_func) };
         let internal_closure_raw = Self::internal_closure_as_raw_pointer(origin_func);
-        let instance = raw_pointer_to_instance::<"io.github.worksoup.function.LumiaSupplier">(
+        let instance = raw_pointer_to_instance(
+            "io.github.worksoup.function.LumiaSupplier",
             internal_closure_raw,
         );
         Supplier {
