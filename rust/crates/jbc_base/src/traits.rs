@@ -85,20 +85,22 @@ pub trait IntoArgTrait {
     fn into_arg(self) -> Result<InvocationArg, J4RsError>;
 }
 
-impl<T> ToArgTrait for T
+impl<T, Error> ToArgTrait for T
 where
     T: Copy,
-    InvocationArg: TryFrom<T, Error = J4RsError>,
+    InvocationArg: TryFrom<T, Error = Error>,
+    J4RsError: From<Error>,
 {
     default fn to_arg(&self) -> Result<InvocationArg, J4RsError> {
-        InvocationArg::try_from(*self)
+        Ok(InvocationArg::try_from(*self)?)
     }
 }
-impl<T> IntoArgTrait for T
+impl<T, Error> IntoArgTrait for T
 where
-    InvocationArg: TryFrom<T, Error = J4RsError>,
+    InvocationArg: TryFrom<T, Error = Error>,
+    J4RsError: From<Error>,
 {
     default fn into_arg(self) -> Result<InvocationArg, J4RsError> {
-        InvocationArg::try_from(self)
+        Ok(InvocationArg::try_from(self)?)
     }
 }
