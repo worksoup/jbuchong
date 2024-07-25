@@ -104,7 +104,7 @@ where
     )
 }
 
-fn impl_get_as<F: Fn(proc_macro2::TokenStream) -> proc_macro2::TokenStream>(
+fn derive_impl<F: Fn(proc_macro2::TokenStream) -> proc_macro2::TokenStream>(
     ast_data: &Data,
     name: &proc_macro2::Ident,
     gen_fn_content: F,
@@ -148,8 +148,8 @@ fn impl_get_as<F: Fn(proc_macro2::TokenStream) -> proc_macro2::TokenStream>(
 /// 为特定的结构体和枚举类型实现 [`GetInstanceTrait`](jbuchong::GetInstanceTrait).
 ///
 /// 这些类型需要满足如下条件：
-///
-/// - 结构体必须拥有 `instance: j4rs::Instance,` 字段。
+/// -
+/// - 元组结构体和结构体必须有一个 [`j4rs::Instance`] 类型的字段。
 /// - 枚举值则必须类似于此：
 ///   ```rust
 ///   struct AType;
@@ -159,13 +159,13 @@ fn impl_get_as<F: Fn(proc_macro2::TokenStream) -> proc_macro2::TokenStream>(
 ///     B(BType),
 ///   }
 ///   ```
-///   并且如上代码，`AType` 和 `BType` 都必须实现 `GetInstanceTrait`.
+///   如上代码，`AType` 和 `BType` 都必须实现 `GetInstanceTrait`.
 #[proc_macro_derive(GetInstanceDerive)]
 pub fn get_instance_derive(input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let name = &ast.ident;
     let generics = &ast.generics;
-    let r#impl = impl_get_as(
+    let r#impl = derive_impl(
         &ast.data,
         name,
         |c| {
@@ -194,7 +194,7 @@ pub fn as_instance_derive(input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let name = &ast.ident;
     let generics = &ast.generics;
-    let r#impl = impl_get_as(&ast.data, name, |c| quote!(&self.#c), quote!(as_instance));
+    let r#impl = derive_impl(&ast.data, name, |c| quote!(&self.#c), quote!(as_instance));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let gen = quote! {
         impl #impl_generics jbuchong::AsInstanceTrait for #name #ty_generics #where_clause {
@@ -214,7 +214,7 @@ pub fn to_arg_derive(input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let name = &ast.ident;
     let generics = &ast.generics;
-    let r#impl = impl_get_as(
+    let r#impl = derive_impl(
         &ast.data,
         name,
         |c| {
@@ -242,7 +242,7 @@ pub fn into_arg_derive(input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let name = &ast.ident;
     let generics = &ast.generics;
-    let r#impl = impl_get_as(
+    let r#impl = derive_impl(
         &ast.data,
         name,
         |c| {
@@ -317,7 +317,7 @@ fn fill_default_fields(
 ///
 /// 这些类型需要满足如下条件：
 ///
-/// - 结构体必须拥有 `instance: `[`j4rs::Instance`]`,` 字段，且其余字段必须都是 [`std::marker::PhantomData`] 类型。
+/// - 元组结构体或结构体必须拥有唯一的一个 [`j4rs::Instance`] 类型的字段，且其余字段均实现了 `Default` 特型。
 /// - 枚举值则必须类似于此：
 ///
 ///   ``` not_test
@@ -427,6 +427,18 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// 对结构体或枚举等没有特殊要求。
+///
+/// 对于有泛型参数的结构体或枚举，可以使用如下语法：
+/// ``` not_test
+/// #[java_type("io.github.worksoup.LumiaUtils", A = i32, B = i32)]
+/// struct LumiaUtils<A, B>{}
+/// ```
+/// 相当于：
+/// ``` not_test
+/// struct LumiaUtils<A, B>{}
+/// impl GetClassTypeTrait for LumiaUtils<i32, i32>{}
+/// ```
+/// 不必指定全部的泛型参数。
 #[proc_macro_attribute]
 pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &mut syn::parse(input).unwrap();
@@ -514,16 +526,27 @@ pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenSt
     };
     gen.into()
 }
-/// fork from crate `newtype` version 0.2.1.
-/// Treat a single-field tuple struct as a "newtype"
+
+/// **fork from crate `newtype` version 0.2.1.**
 ///
-/// This will implement `From`, `Into`, `Deref`, and `DerefMut` for the inner
-/// type.
+/// 有何不同：使之可以作用于普通结构体，同时放宽字段数量限制，只需确保类型只有一个非 `PhantomData|PhantomPinned` 字段即可。
+///
+/// 原介绍：
+///
+/// > Treat a single-field tuple struct as a "newtype"
+/// >
+/// > This will implement `From`, `Into`, `Deref`, and `DerefMut` for the inner
+/// > type.
+///
+/// 原介绍翻译：
+///
+/// > 为单字段元组结构体实现 `newtype` 模式。
+/// >
+/// > 这将为内含值实现 `From`, `Into`, `Deref` 和 `DerefMut` 特型。
 #[proc_macro_derive(NewType)]
 pub fn newtype(input: TokenStream) -> TokenStream {
     let input = syn::parse::<DeriveInput>(input).expect("syn parse derive input");
-
-    gen_impl(input).into()
+    new_type_impl(input).into()
 }
 
 fn type_is_phantom(field: &Field) -> bool {
@@ -550,7 +573,7 @@ fn find_needed_field_index<F: Fn(&Field) -> bool>(
     }
     (len, th, name)
 }
-fn gen_impl(input: DeriveInput) -> proc_macro2::TokenStream {
+fn new_type_impl(input: DeriveInput) -> proc_macro2::TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let name = input.ident;
 
@@ -643,7 +666,7 @@ fn gen_impl(input: DeriveInput) -> proc_macro2::TokenStream {
 }
 /// ### `java_all`
 ///
-/// 同时应用 [`GetInstanceDerive`], [`AsInstanceDerive`], [`FromInstanceDerive`] 和 [`java_type`](macro@java_type).
+/// 同时应用 [`GetInstanceDerive`], [`AsInstanceDerive`], [`FromInstanceDerive`], [`ToArgDerive`], [`IntoArgDerive`] 和 [`java_type`](macro@java_type).
 ///
 /// 接受一个字符串字面值参数传递给 `java_type` 属性。
 #[proc_macro_attribute]
@@ -651,7 +674,7 @@ pub fn java_all(type_name: TokenStream, input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let type_name: syn::LitStr = syn::parse(type_name).unwrap();
     let gen = quote! {
-        #[derive(jbuchong::AsInstanceDerive, jbuchong::TryFromInstanceDerive, jbuchong::GetInstanceDerive)]
+        #[derive(jbuchong::AsInstanceDerive, jbuchong::TryFromInstanceDerive, jbuchong::GetInstanceDerive, jbuchong::ToArgDerive, jbuchong::IntoArgDerive)]
         #[jbuchong::java_type(#type_name)]
         #ast
     };
