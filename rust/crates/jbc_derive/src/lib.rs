@@ -250,7 +250,7 @@ pub fn into_arg_derive(input: TokenStream) -> TokenStream {
                 Ok(j4rs::InvocationArg::try_from(self.#c)?)
             }
         },
-        quote!(to_arg),
+        quote!(into_arg),
     );
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let gen = quote! {
