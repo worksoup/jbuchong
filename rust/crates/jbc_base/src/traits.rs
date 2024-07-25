@@ -41,6 +41,11 @@ pub trait TryFromInstanceTrait: Sized {
 pub trait FromInstanceTrait: Sized {
     fn from_instance(instance: Instance) -> Self;
 }
+impl FromInstanceTrait for Instance {
+    fn from_instance(instance: Instance) -> Self {
+        instance
+    }
+}
 impl<T: TryFromInstanceTrait> FromInstanceTrait for T {
     default fn from_instance(instance: Instance) -> Self {
         Self::try_from_instance(instance).unwrap()
@@ -64,6 +69,11 @@ impl_try_from_instance!(String, bool, char, i8, i16, i32, i64, f32, f64);
 impl TryFromInstanceTrait for Ordering {
     fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
         Ok(i32::try_from_instance(instance)?.cmp(&0))
+    }
+}
+impl TryFromInstanceTrait for Instance {
+    fn try_from_instance(instance: Instance) -> Result<Self, J4RsError> {
+        Ok(instance)
     }
 }
 /// 该特型表示可以将该类型构造为 [`InvocationArg`], 方便作为 java 调用的参数传入。
