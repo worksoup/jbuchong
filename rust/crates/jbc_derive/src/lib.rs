@@ -435,7 +435,7 @@ pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenSt
         .split(',')
         .map(|s| s.trim())
         .collect::<Vec<_>>();
-    let type_name = type_name_and_attr.get(0).expect("请指定 java 类型！");
+    let type_name = type_name_and_attr.first().expect("请指定 java 类型！");
     let type_name: &syn::LitStr = &syn::parse(type_name.parse().expect("类型名称请用字符串表示！"))
         .expect("类型名称请用字符串表示！");
     let name = &ast.ident;
@@ -446,7 +446,7 @@ pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenSt
         .map(|attr| {
             let attr = attr.split('=').map(|s| s.trim()).collect::<Vec<_>>();
             (
-                *attr.get(0).expect("泛型参数指定格式错误！"),
+                *attr.first().expect("泛型参数指定格式错误！"),
                 *attr.get(1).expect("泛型参数指定格式错误！"),
             )
         })
@@ -470,7 +470,7 @@ pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenSt
         .split(',')
         .map(|s| {
             let s = s.trim();
-            attrs.get(s).map(|&ty| ty).unwrap_or(s)
+            attrs.get(s).copied().unwrap_or(s)
         })
         .collect::<Vec<_>>()
         .join(",");
