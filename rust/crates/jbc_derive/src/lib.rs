@@ -664,19 +664,32 @@ fn new_type_impl(input: DeriveInput) -> proc_macro2::TokenStream {
         #from #deref #deref_mut #into_inner
     }
 }
+#[inline]
+fn java_impl(type_name: TokenStream, input: TokenStream) -> proc_macro2::TokenStream {
+    let ast: &DeriveInput = &syn::parse(input).unwrap();
+    if type_name.is_empty() {
+        quote! {
+            #[derive(jbuchong::AsInstanceDerive, jbuchong::GetInstanceDerive, jbuchong::ToArgDerive, jbuchong::IntoArgDerive)]
+            #ast
+        }
+    } else {
+        let type_name: syn::LitStr = syn::parse(type_name).unwrap();
+        quote! {
+            #[derive(jbuchong::AsInstanceDerive, jbuchong::GetInstanceDerive, jbuchong::ToArgDerive, jbuchong::IntoArgDerive)]
+            #[jbuchong::java_type(#type_name)]
+            #ast
+        }
+    }
+}
 /// ### `java_all`
 ///
 /// 同时应用 [`TryFromInstanceDerive`], 和 [`java`](macro@java).
-///
-/// 接受一个字符串字面值参数传递给 `java_type` 属性。
 #[proc_macro_attribute]
 pub fn java_all(type_name: TokenStream, input: TokenStream) -> TokenStream {
-    let ast: &DeriveInput = &syn::parse(input).unwrap();
-    let type_name: syn::LitStr = syn::parse(type_name).unwrap();
+    let gen = java_impl(type_name, input);
     let gen = quote! {
         #[derive(jbuchong::TryFromInstanceDerive)]
-        #[jbuchong::java(#type_name)]
-        #ast
+        #gen
     };
     gen.into()
 }
@@ -685,15 +698,8 @@ pub fn java_all(type_name: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// 同时应用 [`GetInstanceDerive`], [`AsInstanceDerive`], [`ToArgDerive`], [`IntoArgDerive`] 和 [`java_type`](macro@java_type).
 ///
-/// 接受一个字符串字面值参数传递给 `java_type` 属性。
+/// 接受一个字符串字面值参数传递给 `java_type` 属性。如不传入字符串，则不实现 `java_type` 属性。
 #[proc_macro_attribute]
 pub fn java(type_name: TokenStream, input: TokenStream) -> TokenStream {
-    let ast: &DeriveInput = &syn::parse(input).unwrap();
-    let type_name: syn::LitStr = syn::parse(type_name).unwrap();
-    let gen = quote! {
-        #[derive(jbuchong::AsInstanceDerive, jbuchong::GetInstanceDerive, jbuchong::ToArgDerive, jbuchong::IntoArgDerive)]
-        #[jbuchong::java_type(#type_name)]
-        #ast
-    };
-    gen.into()
+    java_impl(type_name, input).into()
 }
