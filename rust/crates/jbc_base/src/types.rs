@@ -1,6 +1,8 @@
 use crate::traits::{GetInstanceTrait, TryFromInstanceTrait};
 use j4rs::{errors::J4RsError, Instance, InvocationArg, Jvm};
-use jbc_derive::{java_type, AsInstanceDerive, GetInstanceDerive, NewType, TryFromInstanceDerive};
+use jbc_derive::{
+    java_all, java_type, AsInstanceDerive, GetInstanceDerive, NewType, TryFromInstanceDerive,
+};
 use std::ops::Deref;
 
 mod jbuchong {
@@ -167,14 +169,7 @@ where
         Ok(Self::new(val1, val2))
     }
 }
-#[derive(
-    jbuchong::AsInstanceDerive,
-    jbuchong::TryFromInstanceDerive,
-    jbuchong::GetInstanceDerive,
-    jbuchong::ToArgDerive,
-    jbuchong::IntoArgDerive,
-)]
-#[jbuchong::java_type("kotlin. Unit")]
+#[java_all("kotlin. Unit")]
 #[derive(NewType)]
 pub struct KotlinUnit(Instance);
 
