@@ -666,7 +666,7 @@ fn new_type_impl(input: DeriveInput) -> proc_macro2::TokenStream {
 }
 /// ### `java_all`
 ///
-/// 同时应用 [`GetInstanceDerive`], [`AsInstanceDerive`], [`FromInstanceDerive`], [`ToArgDerive`], [`IntoArgDerive`] 和 [`java_type`](macro@java_type).
+/// 同时应用 [`TryFromInstanceDerive`], 和 [`java`](macro@java).
 ///
 /// 接受一个字符串字面值参数传递给 `java_type` 属性。
 #[proc_macro_attribute]
@@ -674,7 +674,24 @@ pub fn java_all(type_name: TokenStream, input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let type_name: syn::LitStr = syn::parse(type_name).unwrap();
     let gen = quote! {
-        #[derive(jbuchong::AsInstanceDerive, jbuchong::TryFromInstanceDerive, jbuchong::GetInstanceDerive, jbuchong::ToArgDerive, jbuchong::IntoArgDerive)]
+        #[derive(jbuchong::TryFromInstanceDerive)]
+        #[jbuchong::java(#type_name)]
+        #ast
+    };
+    gen.into()
+}
+
+/// ### `java`
+///
+/// 同时应用 [`GetInstanceDerive`], [`AsInstanceDerive`], [`ToArgDerive`], [`IntoArgDerive`] 和 [`java_type`](macro@java_type).
+///
+/// 接受一个字符串字面值参数传递给 `java_type` 属性。
+#[proc_macro_attribute]
+pub fn java(type_name: TokenStream, input: TokenStream) -> TokenStream {
+    let ast: &DeriveInput = &syn::parse(input).unwrap();
+    let type_name: syn::LitStr = syn::parse(type_name).unwrap();
+    let gen = quote! {
+        #[derive(jbuchong::AsInstanceDerive, jbuchong::GetInstanceDerive, jbuchong::ToArgDerive, jbuchong::IntoArgDerive)]
         #[jbuchong::java_type(#type_name)]
         #ast
     };
