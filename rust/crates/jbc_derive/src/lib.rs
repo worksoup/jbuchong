@@ -9,9 +9,6 @@ pub fn impl_kt_func_n(_input: TokenStream) -> TokenStream {
 use crate::Func2;
 use j4rs::errors::J4RsError;
 use j4rs::{{Instance, InvocationArg, Jvm}};
-use jbuchong::{{GetInstanceTrait, TryFromInstanceTrait}};
-use jbc_derive::GetInstanceDerive;
-use jbuchong::KotlinPair;
     "#
     .to_string();
     let mut r = vec![import];
@@ -48,33 +45,33 @@ fn impl_kt_func_n_(n: usize) -> String {
         .join(", ");
     let where_params = "ABCDEFGHIJKLMNOP"[0..n]
         .chars()
-        .map(|c| format!("{c}: TryFromInstanceTrait"))
+        .map(|c| format!("{c}: jbuchong::TryFromInstanceTrait"))
         .collect::<Vec<_>>()
         .join(",\n");
     let type_name = format!("Func{n}");
     let last_type_name = format!("Func{}", n - 1);
     format!(
         r#"
-#[derive(GetInstanceDerive)]
+#[jbuchong::java]
 pub struct {type_name}<A, B, {type_params}, R> {{
     instance: Instance,
-    func: {last_type_name}<KotlinPair<A, B>, {type_params}, R>,
+    func: {last_type_name}<jbuchong::KotlinPair<A, B>, {type_params}, R>,
 }}
 impl<A, B, {type_params}, R> {type_name}<A, B, {type_params}, R> {{
     pub fn drop(self) {{
         self.func.drop()
     }}
     pub fn call(&self, a: A, b: B, {args_1}) -> R {{
-        self.func.call(KotlinPair::new(a, b), {call_args})
+        self.func.call(jbuchong::KotlinPair::new(a, b), {call_args})
     }}
 }}
 impl<A, B, {type_params}, R> {type_name}<A, B, {type_params}, R>
 where
-    R: TryFromInstanceTrait,
+    R: jbuchong::TryFromInstanceTrait,
 {{
     pub fn invoke(&self, {args_2}) -> Result<R, J4RsError> {{
         let jvm = Jvm::attach_thread()?;
-        let result = jvm.invoke(&self.get_instance()?, "invoke", &[a, b, {call_args}])?;
+        let result = jvm.invoke(&jbuchong::GetInstanceTrait::get_instance(self)?, "invoke", &[a, b, {call_args}])?;
         R::try_from_instance(result)
     }}
 }}
@@ -82,19 +79,19 @@ where
 impl<A, B, {type_params}, R> {type_name}<A, B, {type_params}, R>
 where
     {where_params},
-    R: GetInstanceTrait,
+    R: jbuchong::GetInstanceTrait,
 {{
     pub fn new<Func>(closure: Func) -> {type_name}<A, B, {type_params}, R>
     where
         Func: Fn(A, B, {type_params}) -> R + 'static,
     {{
-        let internal_fn = move |v: KotlinPair<A, B>, {args_1}| -> R {{ let (a, b) = v.into_inner(); closure(a, b, {call_args}) }};
+        let internal_fn = move |v: jbuchong::KotlinPair<A, B>, {args_1}| -> R {{ let (a, b) = v.into_inner(); closure(a, b, {call_args}) }};
         let func = {last_type_name}::new(internal_fn);
         let jvm = Jvm::attach_thread().unwrap();
         let instance = jvm
             .create_instance(
                 "io.github.worksoup.function.LumiaKt{type_name}",
-                &[InvocationArg::from(func.get_instance().unwrap())],
+                &[InvocationArg::from(jbuchong::GetInstanceTrait::get_instance(&func).unwrap())],
             )
             .unwrap();
         {type_name} {{ instance, func }}
@@ -375,7 +372,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
                     impl_tokens.extend(quote!(
                         if <#ty as jbuchong::GetClassTypeTrait>::is_this_type(&instance) {
                             #name::#ident(
-                                #ty::try_from_instance(
+                                <#ty>::try_from_instance(
                                     <#ty as jbuchong::GetClassTypeTrait>::cast_to_this_type(instance)
                                 )?
                             )
