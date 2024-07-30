@@ -285,8 +285,6 @@ fn get_field_attr<'a>(
                 eprintln!("不支持该属性，将忽略。")
             } else if ident.to_string().is_empty() {
                 continue;
-            } else {
-                panic!("不支持的属性标记 `{ident}`!")
             }
         }
     }
