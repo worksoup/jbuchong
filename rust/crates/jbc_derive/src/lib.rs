@@ -339,7 +339,7 @@ fn fill_default_fields(
                                         let value = meta.value;
                                         tokens.extend(quote!(#field_name: #value,))
                                     }
-                                    "fn" => {
+                                    "fn_name" => {
                                         let value = meta.value;
                                         init_expr
                                             .push(quote! {let #field_name = #value(&instance);});
@@ -396,51 +396,48 @@ fn fill_default_fields(
                 if field_is_needed(field) && the_instance.is_none() {
                     tokens.extend(quote!(instance,));
                     the_instance = Some(field);
-                } else {
-                    if let Some(this_attr) = this_attr {
-                        let nested = this_attr
-                            .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-                            .expect("解析属性失败！");
-                        for meta in nested {
-                            match meta {
-                                // #[repr(align(N))]
-                                Meta::NameValue(meta) => {
-                                    match meta
-                                        .path
-                                        .get_ident()
-                                        .as_ref()
-                                        .expect("unrecognized default")
-                                        .to_string()
-                                        .as_str()
-                                    {
-                                        "value" => {
-                                            let value = meta.value;
-                                            tokens.extend(quote!(#value,))
-                                        }
-                                        "fn" => {
-                                            let field_name = format!("field{fields_count}")
-                                                .parse::<proc_macro2::TokenStream>()
-                                                .unwrap();
-                                            fields_count += 1;
-                                            let value = meta.value;
-                                            init_expr.push(
-                                                quote! {let #field_name = #value(&instance);},
-                                            );
-                                            tokens.extend(quote!(#field_name,))
-                                        }
-                                        _ => {
-                                            panic!("unrecognized default")
-                                        }
+                } else if let Some(this_attr) = this_attr {
+                    let nested = this_attr
+                        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+                        .expect("解析属性失败！");
+                    for meta in nested {
+                        match meta {
+                            // #[repr(align(N))]
+                            Meta::NameValue(meta) => {
+                                match meta
+                                    .path
+                                    .get_ident()
+                                    .as_ref()
+                                    .expect("unrecognized default")
+                                    .to_string()
+                                    .as_str()
+                                {
+                                    "value" => {
+                                        let value = meta.value;
+                                        tokens.extend(quote!(#value,))
+                                    }
+                                    "fn_name" => {
+                                        let field_name = format!("field{fields_count}")
+                                            .parse::<proc_macro2::TokenStream>()
+                                            .unwrap();
+                                        fields_count += 1;
+                                        let value = meta.value;
+                                        init_expr
+                                            .push(quote! {let #field_name = #value(&instance);});
+                                        tokens.extend(quote!(#field_name,))
+                                    }
+                                    _ => {
+                                        panic!("unrecognized default")
                                     }
                                 }
-                                _ => {
-                                    panic!("unrecognized default")
-                                }
+                            }
+                            _ => {
+                                panic!("unrecognized default")
                             }
                         }
-                    } else {
-                        tokens.extend(quote!(Default::default(),));
                     }
+                } else {
+                    tokens.extend(quote!(Default::default(),));
                 }
             }
             (
@@ -462,7 +459,7 @@ fn fill_default_fields(
 /// - 元组结构体或结构体的第一个[`j4rs::Instance`] 类型的字段会被传入的 `instance` 填充，其余的字段需要实现 `Default` 特型或指定了 `#[default(value|fn)]` 属性。
 ///   > 例如：
 ///   > - `#[default(value = v)]` 会生成类似于 `let field_name = v;` 的代码，然后初始化字段时会使用 `field_name`;
-///     - `#[default(fn = fn_name)]` 会成类似于 `let field_name = fn_name(&instance);` 的代码，然后初始化字段时会使用 `field_name`;
+///     - `#[default(fn_name = fn_name)]` 会成类似于 `let field_name = fn_name(&instance);` 的代码，然后初始化字段时会使用 `field_name`;
 /// - 枚举值则必须类似于此：
 ///
 ///   ``` not_test
