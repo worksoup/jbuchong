@@ -2,7 +2,9 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use std::collections::HashMap;
-use syn::{Data, DeriveInput, Field, Fields, GenericParam, Type};
+use syn::punctuated::Punctuated;
+use syn::{Attribute, Data, DeriveInput, Field, Fields, GenericParam, Meta, Token, Type};
+
 #[proc_macro]
 pub fn impl_kt_func_n(_input: TokenStream) -> TokenStream {
     let import = r#"
@@ -268,44 +270,187 @@ fn type_is_instance(field: &Field) -> bool {
     }
     false
 }
+fn get_field_attr<'a>(
+    f: impl Iterator<Item = &'a Attribute>,
+    needed: &str,
+    other: &str,
+) -> Option<Attribute> {
+    let mut b = None;
+    for a in f {
+        if let Some(ident) = a.path().get_ident() {
+            if ident == needed {
+                b = Some(a.clone());
+                break;
+            } else if ident == other {
+                eprintln!("不支持该属性，将忽略。")
+            } else {
+                panic!("不支持的属性标记！")
+            }
+        }
+    }
+    b
+}
 fn fill_default_fields(
     fields: &Fields,
     field_is_needed: impl Fn(&Field) -> bool,
     value_name: &proc_macro2::TokenStream,
-) -> proc_macro2::TokenStream {
+) -> (proc_macro2::TokenStream, Vec<proc_macro2::TokenStream>) /*(fields, init)*/ {
     let mut tokens = proc_macro2::TokenStream::new();
-    let mut instance_filled = false;
+    let mut the_instance = None;
+    let mut init_expr = Vec::new();
     match fields {
         Fields::Named(fields) => {
-            for field in &fields.named {
+            let fields = {
+                let mut fields_ = Vec::new();
+                for field in &fields.named {
+                    if field_is_needed(field) && the_instance.is_none() {
+                        the_instance = Some(field)
+                    } else {
+                        fields_.push(field);
+                    }
+                }
+                fields_
+            };
+            if let Some(the_instance) = the_instance {
+                let field_name = the_instance.ident.as_ref().unwrap();
+                init_expr.push(quote! {let #field_name = #value_name;});
+                tokens.extend(quote!(#field_name,));
+            }
+            for field in &fields {
+                let this_attr = get_field_attr(field.attrs.iter(), "default", "fall");
                 let field_name = field.ident.as_ref().unwrap();
-                if field_is_needed(field) && !instance_filled {
-                    tokens.extend(quote!(#field_name:#value_name,));
-                    instance_filled = true;
+                if let Some(this_attr) = this_attr {
+                    let nested = this_attr
+                        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+                        .expect("解析属性失败！");
+                    for meta in nested {
+                        match meta {
+                            // #[repr(align(N))]
+                            Meta::NameValue(meta) => {
+                                match meta
+                                    .path
+                                    .get_ident()
+                                    .as_ref()
+                                    .expect("unrecognized default")
+                                    .to_string()
+                                    .as_str()
+                                {
+                                    "value" => {
+                                        let value = meta.value;
+                                        tokens.extend(quote!(#field_name: #value,))
+                                    }
+                                    "fn" => {
+                                        let value = meta.value;
+                                        init_expr
+                                            .push(quote! {let #field_name = #value(&instance);});
+                                        tokens.extend(quote!(#field_name,))
+                                    }
+                                    _ => {
+                                        panic!("unrecognized default")
+                                    }
+                                }
+                            }
+                            _ => {
+                                panic!("unrecognized default")
+                            }
+                        }
+                    }
                 } else {
                     tokens.extend(quote!(#field_name:Default::default(),))
                 }
             }
-            quote! {
-                {#tokens}
-            }
+            (
+                quote! {
+                    {#tokens}
+                },
+                init_expr,
+            )
         }
         Fields::Unnamed(fields) => {
-            for field in &fields.unnamed {
-                if field_is_needed(field) && !instance_filled {
-                    tokens.extend(quote!(#value_name,));
-                    instance_filled = true;
+            fields.unnamed.iter().find_map(|f| {
+                if field_is_needed(f) {
+                    init_expr.push(quote! {let instance = #value_name;});
+                    Some(())
                 } else {
-                    tokens.extend(quote!(Default::default(),));
+                    None
+                }
+            });
+            let mut fields_count = 0;
+            for field in &fields.unnamed {
+                let this_attr = {
+                    let mut b = None;
+                    for a in field.attrs.iter() {
+                        if let Some(ident) = a.path().get_ident() {
+                            if ident == "default" {
+                                b = Some(a.clone());
+                                break;
+                            } else if ident == "fall" {
+                                eprintln!("不支持该属性，将忽略。")
+                            } else {
+                                panic!("不支持的属性标记！")
+                            }
+                        }
+                    }
+                    b
+                };
+                if field_is_needed(field) && the_instance.is_none() {
+                    tokens.extend(quote!(instance,));
+                    the_instance = Some(field);
+                } else {
+                    if let Some(this_attr) = this_attr {
+                        let nested = this_attr
+                            .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+                            .expect("解析属性失败！");
+                        for meta in nested {
+                            match meta {
+                                // #[repr(align(N))]
+                                Meta::NameValue(meta) => {
+                                    match meta
+                                        .path
+                                        .get_ident()
+                                        .as_ref()
+                                        .expect("unrecognized default")
+                                        .to_string()
+                                        .as_str()
+                                    {
+                                        "value" => {
+                                            let value = meta.value;
+                                            tokens.extend(quote!(#value,))
+                                        }
+                                        "fn" => {
+                                            let field_name = format!("field{fields_count}")
+                                                .parse::<proc_macro2::TokenStream>()
+                                                .unwrap();
+                                            fields_count += 1;
+                                            let value = meta.value;
+                                            init_expr.push(
+                                                quote! {let #field_name = #value(&instance);},
+                                            );
+                                            tokens.extend(quote!(#field_name,))
+                                        }
+                                        _ => {
+                                            panic!("unrecognized default")
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    panic!("unrecognized default")
+                                }
+                            }
+                        }
+                    } else {
+                        tokens.extend(quote!(Default::default(),));
+                    }
                 }
             }
-            quote! {
-                (#tokens)
-            }
+            (
+                quote! {
+                    (#tokens)
+                },
+                init_expr,
+            )
         }
-        Fields::Unit => {
-            panic!("不支持无字段结构体！")
-        }
+        Fields::Unit => (quote! {}, init_expr),
     }
 }
 /// ### `TryFromInstanceDerive`
@@ -314,7 +459,10 @@ fn fill_default_fields(
 ///
 /// 这些类型需要满足如下条件：
 ///
-/// - 元组结构体或结构体必须拥有唯一的一个 [`j4rs::Instance`] 类型的字段，且其余字段均实现了 `Default` 特型。
+/// - 元组结构体或结构体的第一个[`j4rs::Instance`] 类型的字段会被传入的 `instance` 填充，其余的字段需要实现 `Default` 特型或指定了 `#[default(value|fn)]` 属性。
+///   > 例如：
+///   > - `#[default(value = v)]` 会生成类似于 `let field_name = v;` 的代码，然后初始化字段时会使用 `field_name`;
+///     - `#[default(fn = fn_name)]` 会成类似于 `let field_name = fn_name(&instance);` 的代码，然后初始化字段时会使用 `field_name`;
 /// - 枚举值则必须类似于此：
 ///
 ///   ``` not_test
@@ -329,18 +477,18 @@ fn fill_default_fields(
 ///
 ///   并且如上代码，`AType` 和 `BType` 都必须实现 `TryFromInstanceTrait`.
 ///   其中 `fall` 意味着未能成功转换的类型将会落到该分支中。如果没有该属性，未能成功转换时将会造成 `panic!`, 如果存在多个，则最后一个有效。
-#[proc_macro_derive(TryFromInstanceDerive, attributes(fall))]
+#[proc_macro_derive(TryFromInstanceDerive, attributes(fall, default))]
 pub fn from_instance_derive(input: TokenStream) -> TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();
     let name = &ast.ident;
     let generics = &ast.generics;
     let impl_tokens = match &ast.data {
         Data::Struct(s) => {
-            let tmp =
+            let (fields, init) =
                 fill_default_fields(&s.fields, type_is_instance, &"instance".parse().unwrap());
             quote!(
-                Self
-                #tmp
+                #(#init)*
+                Ok(Self #fields)
             )
         }
         Data::Enum(e) => {
@@ -348,55 +496,56 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
             let mut fall_arm = variants.first();
             let mut impl_tokens = proc_macro2::TokenStream::new();
             for variant in variants {
-                let has_this_attr = if let Some(field_attr) = variant.attrs.first() {
-                    if let Some(ident) = field_attr.path().get_ident() {
-                        ident == "fall"
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                };
-                if has_this_attr {
+                let this_attr = get_field_attr(variant.attrs.iter(), "default", "fall");
+                if this_attr.is_some() {
                     fall_arm = Some(variant);
                 } else {
-                    let ty = match &variant.fields {
+                    match &variant.fields {
                         Fields::Unnamed(fields) => {
-                            &fields.unnamed.first().expect("无名枚举没有字段！").ty
+                            let ty = &fields.unnamed.first().expect("无名枚举没有字段！").ty;
+                            let ident = &variant.ident;
+                            impl_tokens.extend(quote!(
+                                if <#ty as jbuchong::GetClassTypeTrait>::is_this_type(&instance) {
+                                    #name::#ident(
+                                        <#ty>::try_from_instance(
+                                            <#ty as jbuchong::GetClassTypeTrait>::cast_to_this_type(instance)
+                                        )?
+                                    )
+                                } else
+                            ))
+                        }
+                        Fields::Unit => {
+                            eprintln!("该枚举值可能不会被使用。")
                         }
                         _ => {
                             panic!("不支持无内含值的枚举以及有名枚举！")
                         }
-                    };
-                    let ident = &variant.ident;
-                    impl_tokens.extend(quote!(
-                        if <#ty as jbuchong::GetClassTypeTrait>::is_this_type(&instance) {
-                            #name::#ident(
-                                <#ty>::try_from_instance(
-                                    <#ty as jbuchong::GetClassTypeTrait>::cast_to_this_type(instance)
-                                )?
-                            )
-                        } else
-                    ))
+                    }
                 }
             }
             if let Some(fall_arm) = fall_arm {
-                let fall_arm_ty = match &fall_arm.fields {
+                match &fall_arm.fields {
                     Fields::Unnamed(fields) => {
-                        &fields.unnamed.first().expect("无名枚举没有字段！").ty
+                        let ty = &fields.unnamed.first().expect("无名枚举没有字段！").ty;
+                        let fall_arm_ident = &fall_arm.ident;
+                        impl_tokens.extend(quote!(
+                            {#name::#fall_arm_ident(<#ty as jbuchong::TryFromInstanceTrait>::try_from_instance(instance)?)}
+                        ));
+                    }
+                    Fields::Unit => {
+                        let fall_arm_ident = &fall_arm.ident;
+                        impl_tokens.extend(quote!(
+                            {#name::#fall_arm_ident}
+                        ));
                     }
                     _ => {
                         panic!("不支持无内含值的枚举以及有名枚举！")
                     }
-                };
-                let fall_arm_ident = &fall_arm.ident;
-                impl_tokens.extend(quote!(
-                    {#name::#fall_arm_ident(<#fall_arm_ty as jbuchong::TryFromInstanceTrait>::try_from_instance(instance)?)}
-                ));
+                }
             } else {
                 impl_tokens.extend(quote!({ panic!("意料之外的类型！") }))
             }
-            impl_tokens
+            quote!(Ok(#impl_tokens))
         }
         Data::Union(_) => panic!("不支持使用 `union`!"),
     };
@@ -404,7 +553,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
     let gen = quote! {
         impl #impl_generics jbuchong::TryFromInstanceTrait for #name #ty_generics #where_clause {
             fn try_from_instance(instance: j4rs::Instance) -> Result<Self,j4rs::errors::J4RsError>{
-                Ok(#impl_tokens)
+                #impl_tokens
             }
         }
     };
@@ -586,12 +735,13 @@ fn new_type_impl(input: DeriveInput) -> proc_macro2::TokenStream {
     let th = th.to_string().parse::<proc_macro2::TokenStream>().unwrap();
     let field = st.fields.iter().next().unwrap();
     let field_ty = &field.ty;
-    let from = fill_default_fields(
+    let (from, init) = fill_default_fields(
         &st.fields,
         |f| !type_is_phantom(f),
         &"other".parse().unwrap(),
     );
     let from = quote! {
+        #(#init)*
         #name
         #from
     };
