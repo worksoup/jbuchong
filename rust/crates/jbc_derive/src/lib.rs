@@ -283,6 +283,8 @@ fn get_field_attr<'a>(
                 break;
             } else if ident == other {
                 eprintln!("不支持该属性，将忽略。")
+            } else if ident.to_string().is_empty() {
+                continue;
             } else {
                 panic!("不支持的属性标记！")
             }
@@ -377,22 +379,7 @@ fn fill_default_fields(
             });
             let mut fields_count = 0;
             for field in &fields.unnamed {
-                let this_attr = {
-                    let mut b = None;
-                    for a in field.attrs.iter() {
-                        if let Some(ident) = a.path().get_ident() {
-                            if ident == "default" {
-                                b = Some(a.clone());
-                                break;
-                            } else if ident == "fall" {
-                                eprintln!("不支持该属性，将忽略。")
-                            } else {
-                                panic!("不支持的属性标记！")
-                            }
-                        }
-                    }
-                    b
-                };
+                let this_attr = get_field_attr(field.attrs.iter(), "default", "fall");
                 if field_is_needed(field) && the_instance.is_none() {
                     tokens.extend(quote!(instance,));
                     the_instance = Some(field);
@@ -493,7 +480,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
             let mut fall_arm = variants.first();
             let mut impl_tokens = proc_macro2::TokenStream::new();
             for variant in variants {
-                let this_attr = get_field_attr(variant.attrs.iter(), "default", "fall");
+                let this_attr = get_field_attr(variant.attrs.iter(), "fall", "default");
                 if this_attr.is_some() {
                     fall_arm = Some(variant);
                 } else {
