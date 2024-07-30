@@ -21,8 +21,10 @@ public final class JBuChongUtils {
 
     public static String primitiveByteArrayToString(byte[] bytes) {
         StringBuilder hexArray = new StringBuilder();
-        for (int num : bytes) {
-            hexArray.append(String.format("%02x", num & 0xFF));
+        if (bytes != null) {
+            for (int num : bytes) {
+                hexArray.append(String.format("%02x", num & 0xFF));
+            }
         }
         return hexArray.toString();
     }
