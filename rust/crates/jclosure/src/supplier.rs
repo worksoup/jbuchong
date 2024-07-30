@@ -56,7 +56,7 @@ where
         let origin_func_raw: RawPointer = unsafe { std::mem::transmute(origin_func) };
         let internal_closure_raw = Self::internal_closure_as_raw_pointer(origin_func);
         let instance = raw_pointer_to_instance(
-            "io.github.worksoup.function.LumiaSupplier",
+            "io.github.worksoup.function.JBuChongSupplier",
             internal_closure_raw,
         );
         Supplier {

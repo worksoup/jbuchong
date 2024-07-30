@@ -64,7 +64,7 @@ where
         let internal_closure_raw = Self::internal_closure_as_raw_pointer(origin_func);
         println!("closure_to_function\n{:?}", internal_closure_raw);
         let instance = raw_pointer_to_instance(
-            "io.github.worksoup.function.LumiaFunction",
+            "io.github.worksoup.function.JBuChongFunction",
             internal_closure_raw,
         );
         Function {

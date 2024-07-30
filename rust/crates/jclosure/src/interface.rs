@@ -5,7 +5,7 @@ use j4rs_derive::*;
 use jbc_base::{InstanceWrapper, TryFromInstanceTrait};
 use std::intrinsics::transmute;
 
-fn lumia_func_apply_internal<T>(
+fn jbc_func_apply_internal<T>(
     raw_pointer_instance: Instance,
     arg: Instance,
 ) -> Result<T, String> {
@@ -17,20 +17,17 @@ fn lumia_func_apply_internal<T>(
     let val = InstanceWrapper::try_from_instance(arg).and_then(|data| unsafe { (*func)(data) });
     val.map_err(|error| format!("{}", error))
 }
-#[call_from_java("io.github.worksoup.function.LumiaConsumer.nativeAccept")]
-fn lumia_consumer_accept(consumer_as_i8_16: Instance, arg: Instance) {
-    let _ = lumia_func_apply_internal::<()>(consumer_as_i8_16, arg);
+#[call_from_java("io.github.worksoup.function.JBuChongConsumer.nativeAccept")]
+fn jbc_consumer_accept(consumer_as_i8_16: Instance, arg: Instance) {
+    let _ = jbc_func_apply_internal::<()>(consumer_as_i8_16, arg);
 }
 
-#[call_from_java("io.github.worksoup.function.LumiaFunction.nativeApply")]
-fn lumia_function_apply(
-    function_raw_as_i8_16: Instance,
-    arg: Instance,
-) -> Result<Instance, String> {
-    lumia_func_apply_internal::<Instance>(function_raw_as_i8_16, arg)
+#[call_from_java("io.github.worksoup.function.JBuChongFunction.nativeApply")]
+fn jbc_function_apply(function_raw_as_i8_16: Instance, arg: Instance) -> Result<Instance, String> {
+    jbc_func_apply_internal::<Instance>(function_raw_as_i8_16, arg)
 }
-#[call_from_java("io.github.worksoup.function.LumiaSupplier.nativeGet")]
-fn lumia_supplier_get(raw_pointer_instance: Instance) -> Result<Instance, String> {
+#[call_from_java("io.github.worksoup.function.JBuChongSupplier.nativeGet")]
+fn jbc_supplier_get(raw_pointer_instance: Instance) -> Result<Instance, String> {
     let func_raw: [i8; POINTER_SIZE] = Jvm::attach_thread()
         .unwrap()
         .to_rust(raw_pointer_instance)
@@ -39,8 +36,8 @@ fn lumia_supplier_get(raw_pointer_instance: Instance) -> Result<Instance, String
     unsafe { (*func)() }.map_err(|error| format!("{}", error))
 }
 
-// #[call_from_java("io.github.worksoup.LumiaKtFunc0.nativeInvoke")]
-// fn lumia_kt_func_0_invoke(kt_func_0_raw_as_i8_16: Instance) -> Result<Instance, String> {
+// #[call_from_java("io.github.worksoup.JBuChongKtFunc0.nativeInvoke")]
+// fn jbc_kt_func_0_invoke(kt_func_0_raw_as_i8_16: Instance) -> Result<Instance, String> {
 //     let kt_func_0_raw: [i8; 16] = Jvm::attach_thread()
 //         .unwrap()
 //         .to_rust(kt_func_0_raw_as_i8_16)
@@ -49,8 +46,8 @@ fn lumia_supplier_get(raw_pointer_instance: Instance) -> Result<Instance, String
 //     let value = unsafe { (*kt_func_0)() };
 //     Ok(value)
 // }
-// #[call_from_java("io.github.worksoup.function.LumiaPredicate.nativeTest")]
-// fn lumia_predicate_test(
+// #[call_from_java("io.github.worksoup.function.JBuChongPredicate.nativeTest")]
+// fn jbc_predicate_test(
 //     predicate_raw_as_i8_16: Instance,
 //     item: Instance,
 // ) -> Result<Instance, String> {

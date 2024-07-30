@@ -37,7 +37,7 @@ where
         let jvm = Jvm::attach_thread().unwrap();
         let instance = jvm
             .create_instance(
-                "io.github.worksoup.function.LumiaComparator",
+                "io.github.worksoup.function.JBuChongComparator",
                 &[InvocationArg::from(func.get_instance().unwrap())],
             )
             .unwrap();

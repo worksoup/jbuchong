@@ -295,7 +295,7 @@ mod tests {
         format!(
             r#"package io.github.worksoup.function
 
-class LumiaKtFunc{}<{}, out R>(private var func: LumiaKtFunc{}<{}, R>) :
+class JBuChongKtFunc{}<{}, out R>(private var func: JBuChongKtFunc{}<{}, R>) :
     Function{}<{}, R> {{
     override fun invoke({}): R {{
         return func({})

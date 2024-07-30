@@ -2,7 +2,7 @@ package io.github.worksoup;
 
 import org.jetbrains.annotations.Contract;
 
-public final class LumiaUtils {
+public final class JBuChongUtils {
     public static Class forName(String name) {
         Class c;
         try {
@@ -15,7 +15,7 @@ public final class LumiaUtils {
 
     @Contract("null, _ -> false")
     public static boolean isInstanceOf(Object obj, String className) {
-        return LumiaUtils.forName(className).isInstance(obj);
+        return JBuChongUtils.forName(className).isInstance(obj);
     }
 
 

@@ -1,6 +1,6 @@
 //! 代表 Java 中的可调用对象。每个模块有一个结构体，命名规则是：
 //!``` plain
-//! LumiaAaBbCc <=> aa_bb_cc
+//! JBuChongAaBbCc <=> aa_bb_cc
 //!      |             |
 //!     Jvm          rust
 //!```

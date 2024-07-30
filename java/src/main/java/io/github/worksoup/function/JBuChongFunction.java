@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
-public final class LumiaFunction<T, R> implements Function<T, R> {
+public final class JBuChongFunction<T, R> implements Function<T, R> {
     @Override
     public R apply(T arg) {
         System.out.println("LumiaFunction");
@@ -17,7 +17,7 @@ public final class LumiaFunction<T, R> implements Function<T, R> {
         return Java2RustUtils.getObjectCasted(instance);
     }
 
-    public LumiaFunction(Byte[] rustFunction) {
+    public JBuChongFunction(Byte[] rustFunction) {
         this.rustFunction = rustFunction;
     }
 

@@ -5,7 +5,7 @@ use std::{collections::HashSet, hash::Hash};
 pub fn primitive_byte_array_to_string(jvm: &Jvm, instance: Instance) -> Instance {
     // let instance = jvm.clone_instance(instance).unwrap();
     jvm.invoke_static(
-        "io.github.worksoup.LumiaUtils",
+        "io.github.worksoup.JBuChongUtils",
         "primitiveByteArrayToString",
         &[InvocationArg::from(instance)],
     )
@@ -20,7 +20,7 @@ pub fn is_instance_of(instance: &Instance, class_name: &str) -> bool {
     let class_name = InvocationArg::try_from(class_name).unwrap();
     jvm.to_rust(
         jvm.invoke_static(
-            "io.github.worksoup.LumiaUtils",
+            "io.github.worksoup.JBuChongUtils",
             "isInstanceOf",
             &[instance, class_name],
         )

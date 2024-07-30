@@ -44,7 +44,7 @@ where
         let jvm = Jvm::attach_thread().unwrap();
         let instance = jvm
             .create_instance(
-                "io.github.worksoup.function.LumiaBiFunction",
+                "io.github.worksoup.function.JBuChongBiFunction",
                 &[InvocationArg::from(func.get_instance().unwrap())],
             )
             .unwrap();

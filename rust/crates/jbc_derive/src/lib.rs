@@ -92,7 +92,7 @@ where
         let jvm = Jvm::attach_thread().unwrap();
         let instance = jvm
             .create_instance(
-                "io.github.worksoup.function.LumiaKt{type_name}",
+                "io.github.worksoup.function.JBuChongKt{type_name}",
                 &[InvocationArg::from(jbuchong::GetInstanceTrait::get_instance(&func).unwrap())],
             )
             .unwrap();
@@ -548,21 +548,21 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
 ///
 /// ```not_test
 /// use jbc_derive::java_type;
-/// #[java_type("io.github.worksoup.LumiaUtils")]
-/// struct LumiaUtils{}
+/// #[java_type("io.github.worksoup.JBuChongUtils")]
+/// struct JBuChongUtils{}
 /// ```
 ///
 /// 对结构体或枚举等没有特殊要求。
 ///
 /// 对于有泛型参数的结构体或枚举，可以使用如下语法：
 /// ``` not_test
-/// #[java_type("io.github.worksoup.LumiaUtils", A = i32, B = i32)]
-/// struct LumiaUtils<A, B>{}
+/// #[java_type("io.github.worksoup.JBuChongUtils", A = i32, B = i32)]
+/// struct JBuChongUtils<A, B>{}
 /// ```
 /// 相当于：
 /// ``` not_test
-/// struct LumiaUtils<A, B>{}
-/// impl GetClassTypeTrait for LumiaUtils<i32, i32>{}
+/// struct JBuChongUtils<A, B>{}
+/// impl GetClassTypeTrait for JBuChongUtils<i32, i32>{}
 /// ```
 /// 不必指定全部的泛型参数。
 #[proc_macro_attribute]
@@ -628,7 +628,7 @@ pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenSt
                 j4rs::Jvm::attach_thread()
                     .unwrap()
                     .invoke_static(
-                        "io.github.worksoup.LumiaUtils",
+                        "io.github.worksoup.JBuChongUtils",
                         "forName",
                         &[j4rs::InvocationArg::try_from(
                             Self::get_type_name(),

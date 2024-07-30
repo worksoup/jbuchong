@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-public final class LumiaConsumer<T> implements Consumer<T> {
+public final class JBuChongConsumer<T> implements Consumer<T> {
     @Override
     public void accept(T e) {
         System.out.println("LumiaConsumer");
@@ -16,7 +16,7 @@ public final class LumiaConsumer<T> implements Consumer<T> {
         nativeAccept(Java2RustUtils.createInstance(rustConsumerAsByteList), Java2RustUtils.createInstance(e));
     }
 
-    public LumiaConsumer(Byte[] rustConsumer) {
+    public JBuChongConsumer(Byte[] rustConsumer) {
         this.rustConsumer = rustConsumer;
     }
 

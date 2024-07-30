@@ -1,7 +1,7 @@
 package io.github.worksoup.function
 
-class LumiaKtFunc15<in A, in B, in C, in D, in E, in F, in G, in H, in I, in J, in K, in L, in M, in N, in O, out R>(
-    private var func: LumiaKtFunc14<Pair<A, B>, C, D, E, F, G, H, I, J, K, L, M, N, O, R>
+class JBuChongKtFunc15<in A, in B, in C, in D, in E, in F, in G, in H, in I, in J, in K, in L, in M, in N, in O, out R>(
+    private var func: JBuChongKtFunc14<Pair<A, B>, C, D, E, F, G, H, I, J, K, L, M, N, O, R>
 ) :
     Function15<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, R> {
     override fun invoke(

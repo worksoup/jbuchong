@@ -35,7 +35,7 @@ where
         let jvm = Jvm::attach_thread().unwrap();
         let instance = jvm
             .create_instance(
-                "io.github.worksoup.function.LumiaPredicate",
+                "io.github.worksoup.function.JBuChongPredicate",
                 &[InvocationArg::from(func.get_instance().unwrap())],
             )
             .unwrap();

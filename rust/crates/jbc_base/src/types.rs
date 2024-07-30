@@ -47,7 +47,7 @@ impl InstanceWrapper {
         T::try_from_instance(Jvm::attach_thread()?.clone_instance(self)?)
     }
 }
-#[java_type("io.github.worksoup.LumiaPair")]
+#[java_type("io.github.worksoup.JBuChongPair")]
 #[derive(NewType)]
 pub struct Pair<F, S>((F, S));
 impl<F, S> Pair<F, S> {
@@ -90,7 +90,7 @@ where
         let jvm = Jvm::attach_thread()?;
         let v1 = InvocationArg::from(self.0 .0.get_instance()?);
         let v2 = InvocationArg::from(self.0 .1.get_instance()?);
-        jvm.create_instance("io.github.worksoup.LumiaPair", &[v1, v2])
+        jvm.create_instance("io.github.worksoup.JBuChongPair", &[v1, v2])
     }
 }
 impl<F, S> TryFromInstanceTrait for Pair<F, S>
@@ -100,7 +100,7 @@ where
 {
     fn try_from_instance(instance: Instance) -> Result<Pair<F, S>, J4RsError> {
         let jvm = Jvm::attach_thread()?;
-        let instance = jvm.cast(&instance, "io.github.worksoup.LumiaPair")?;
+        let instance = jvm.cast(&instance, "io.github.worksoup.JBuChongPair")?;
         let val1 = jvm.invoke(&instance, "first", InvocationArg::empty())?;
         let val2 = jvm.invoke(&instance, "second", InvocationArg::empty())?;
         let val1 = F::try_from_instance(val1)?;

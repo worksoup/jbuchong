@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class LumiaSupplier<T> implements Supplier<T> {
+public class JBuChongSupplier<T> implements Supplier<T> {
     @Override
     public T get() {
         System.out.println("LumiaSupplier");
@@ -17,7 +17,7 @@ public class LumiaSupplier<T> implements Supplier<T> {
         return Java2RustUtils.getObjectCasted(instance);
     }
 
-    public LumiaSupplier(Byte[] rustSupplier) {
+    public JBuChongSupplier(Byte[] rustSupplier) {
         this.rustSupplier = rustSupplier;
     }
 
