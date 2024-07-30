@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 public class JBuChongSupplier<T> implements Supplier<T> {
     @Override
     public T get() {
-        System.out.println("LumiaSupplier");
+        System.out.println("JBuChongSupplier");
         System.out.println(Arrays.toString(this.rustSupplier));
         var rustSupplierAsByteList = Arrays.stream(this.rustSupplier).toList();
         var instance = nativeGet(Java2RustUtils.createInstance(rustSupplierAsByteList));

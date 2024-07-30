@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 public final class JBuChongConsumer<T> implements Consumer<T> {
     @Override
     public void accept(T e) {
-        System.out.println("LumiaConsumer");
+        System.out.println("JBuChongConsumer");
         System.out.println(Arrays.toString(this.rustConsumer));
         var rustConsumerAsByteList = Arrays.stream(this.rustConsumer).toList();
         nativeAccept(Java2RustUtils.createInstance(rustConsumerAsByteList), Java2RustUtils.createInstance(e));

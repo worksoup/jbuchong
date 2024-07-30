@@ -10,7 +10,7 @@ import java.util.function.Function;
 public final class JBuChongFunction<T, R> implements Function<T, R> {
     @Override
     public R apply(T arg) {
-        System.out.println("LumiaFunction");
+        System.out.println("JBuChongFunction");
         System.out.println(Arrays.toString(this.rustFunction));
         var rustFunctionAsByteList = Arrays.stream(this.rustFunction).toList();
         var instance = nativeApply(Java2RustUtils.createInstance(rustFunctionAsByteList), Java2RustUtils.createInstance(arg));
