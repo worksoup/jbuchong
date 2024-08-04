@@ -669,6 +669,35 @@ pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenSt
 /// > 为单字段元组结构体实现 `newtype` 模式。
 /// >
 /// > 这将为内含值实现 `From`, `Into`, `Deref` 和 `DerefMut` 特型。
+///
+/// 此处原样提供 newtype 的 MIT 许可证（不适用于本项目）：
+/// ``` text
+/// Copyright (c) 2016 Josh Robson Chase
+///
+/// Permission is hereby granted, free of charge, to any
+/// person obtaining a copy of this software and associated
+/// documentation files (the "Software"), to deal in the
+/// Software without restriction, including without
+/// limitation the rights to use, copy, modify, merge,
+/// publish, distribute, sublicense, and/or sell copies of
+/// the Software, and to permit persons to whom the Software
+/// is furnished to do so, subject to the following
+/// conditions:
+///
+/// The above copyright notice and this permission notice
+/// shall be included in all copies or substantial portions
+/// of the Software.
+///
+/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+/// ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+/// TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+/// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+/// SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+/// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+/// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+/// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+/// DEALINGS IN THE SOFTWARE.
+/// ```
 #[proc_macro_derive(NewType)]
 pub fn newtype(input: TokenStream) -> TokenStream {
     let input = syn::parse::<DeriveInput>(input).expect("syn parse derive input");
@@ -705,12 +734,12 @@ fn new_type_impl(input: DeriveInput) -> proc_macro2::TokenStream {
 
     let st = match input.data {
         Data::Struct(st) => st,
-        _ => panic!("NewType can only be derived for single-field structs"),
+        _ => panic!("NewType can only be derived for single-valued-field structs"),
     };
     let (len, th, field_name) =
         find_needed_field_index(&st.fields, |field: &Field| !type_is_phantom(field));
     if len != 1 {
-        panic!("NewType can only be derived for single-field structs")
+        panic!("NewType can only be derived for single-valued-field structs")
     }
     let th = th.to_string().parse::<proc_macro2::TokenStream>().unwrap();
     let field = st.fields.iter().next().unwrap();
