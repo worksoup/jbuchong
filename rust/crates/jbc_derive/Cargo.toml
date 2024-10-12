@@ -10,3 +10,4 @@ proc-macro = true
 syn = "2"
 quote = "*"
 proc-macro2 = "*"
+zdcz = { git = "https://github.com/worksoup/zdcz.git" }

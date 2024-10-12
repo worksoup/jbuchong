@@ -2,8 +2,8 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use std::collections::HashMap;
-use syn::punctuated::Punctuated;
-use syn::{Attribute, Data, DeriveInput, Field, Fields, GenericParam, Meta, Token, Type};
+use syn::{Data, DeriveInput, Field, Fields, GenericParam, Type};
+use zdcz::{fill_default_fields, find_needed_field_index, get_field_attr};
 
 #[proc_macro]
 pub fn impl_kt_func_n(_input: TokenStream) -> TokenStream {
@@ -12,7 +12,7 @@ use crate::Func2;
 use j4rs::errors::J4RsError;
 use j4rs::{{Instance, InvocationArg, Jvm}};
     "#
-    .to_string();
+        .to_string();
     let mut r = vec![import];
     for n in 3..=16 {
         r.push(impl_kt_func_n_(n));
@@ -42,7 +42,7 @@ fn impl_kt_func_n_(n: usize) -> String {
         .join(", ");
     let call_args = "ABCDEFGHIJKLMNOP"[2..n]
         .chars()
-        .map(|c| format!("{}", c.to_lowercase(),))
+        .map(|c| format!("{}", c.to_lowercase(), ))
         .collect::<Vec<_>>()
         .join(", ");
     let where_params = "ABCDEFGHIJKLMNOP"[0..n]
@@ -270,169 +270,6 @@ fn type_is_instance(field: &Field) -> bool {
     }
     false
 }
-fn get_field_attr<'a>(
-    f: impl Iterator<Item = &'a Attribute>,
-    needed: &str,
-    other: &str,
-) -> Option<Attribute> {
-    let mut b = None;
-    for a in f {
-        if let Some(ident) = a.path().get_ident() {
-            if ident == needed {
-                b = Some(a.clone());
-                break;
-            } else if ident == other {
-                eprintln!("不支持该属性，将忽略。")
-            }
-        }
-    }
-    b
-}
-fn fill_default_fields(
-    fields: &Fields,
-    field_is_needed: impl Fn(&Field) -> bool,
-    value_name: &proc_macro2::TokenStream,
-) -> (proc_macro2::TokenStream, Vec<proc_macro2::TokenStream>) /*(fields, init)*/ {
-    let mut tokens = proc_macro2::TokenStream::new();
-    let mut the_instance = None;
-    let mut init_expr = Vec::new();
-    match fields {
-        Fields::Named(fields) => {
-            let fields = {
-                let mut fields_ = Vec::new();
-                for field in &fields.named {
-                    if field_is_needed(field) && the_instance.is_none() {
-                        the_instance = Some(field)
-                    } else {
-                        fields_.push(field);
-                    }
-                }
-                fields_
-            };
-            if let Some(the_instance) = the_instance {
-                let field_name = the_instance.ident.as_ref().unwrap();
-                init_expr.push(quote! {let #field_name = #value_name;});
-                tokens.extend(quote!(#field_name,));
-            }
-            for field in &fields {
-                let this_attr = get_field_attr(field.attrs.iter(), "default", "fall");
-                let field_name = field.ident.as_ref().unwrap();
-                if let Some(this_attr) = this_attr {
-                    let nested = this_attr
-                        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-                        .expect("解析属性失败！");
-                    for meta in nested {
-                        match meta {
-                            // #[repr(align(N))]
-                            Meta::NameValue(meta) => {
-                                match meta
-                                    .path
-                                    .get_ident()
-                                    .as_ref()
-                                    .expect("unrecognized default")
-                                    .to_string()
-                                    .as_str()
-                                {
-                                    "value" => {
-                                        let value = meta.value;
-                                        tokens.extend(quote!(#field_name: #value,))
-                                    }
-                                    "fn_name" => {
-                                        let value = meta.value;
-                                        init_expr
-                                            .push(quote! {let #field_name = #value(&instance);});
-                                        tokens.extend(quote!(#field_name,))
-                                    }
-                                    _ => {
-                                        panic!("unrecognized default")
-                                    }
-                                }
-                            }
-                            _ => {
-                                panic!("unrecognized default")
-                            }
-                        }
-                    }
-                } else {
-                    tokens.extend(quote!(#field_name:Default::default(),))
-                }
-            }
-            (
-                quote! {
-                    {#tokens}
-                },
-                init_expr,
-            )
-        }
-        Fields::Unnamed(fields) => {
-            fields.unnamed.iter().find_map(|f| {
-                if field_is_needed(f) {
-                    init_expr.push(quote! {let instance = #value_name;});
-                    Some(())
-                } else {
-                    None
-                }
-            });
-            let mut fields_count = 0;
-            for field in &fields.unnamed {
-                let this_attr = get_field_attr(field.attrs.iter(), "default", "fall");
-                if field_is_needed(field) && the_instance.is_none() {
-                    tokens.extend(quote!(instance,));
-                    the_instance = Some(field);
-                } else if let Some(this_attr) = this_attr {
-                    let nested = this_attr
-                        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-                        .expect("解析属性失败！");
-                    for meta in nested {
-                        match meta {
-                            // #[repr(align(N))]
-                            Meta::NameValue(meta) => {
-                                match meta
-                                    .path
-                                    .get_ident()
-                                    .as_ref()
-                                    .expect("unrecognized default")
-                                    .to_string()
-                                    .as_str()
-                                {
-                                    "value" => {
-                                        let value = meta.value;
-                                        tokens.extend(quote!(#value,))
-                                    }
-                                    "fn_name" => {
-                                        let field_name = format!("field{fields_count}")
-                                            .parse::<proc_macro2::TokenStream>()
-                                            .unwrap();
-                                        fields_count += 1;
-                                        let value = meta.value;
-                                        init_expr
-                                            .push(quote! {let #field_name = #value(&instance);});
-                                        tokens.extend(quote!(#field_name,))
-                                    }
-                                    _ => {
-                                        panic!("unrecognized default")
-                                    }
-                                }
-                            }
-                            _ => {
-                                panic!("unrecognized default")
-                            }
-                        }
-                    }
-                } else {
-                    tokens.extend(quote!(Default::default(),));
-                }
-            }
-            (
-                quote! {
-                    (#tokens)
-                },
-                init_expr,
-            )
-        }
-        Fields::Unit => (quote! {}, init_expr),
-    }
-}
 /// ### `TryFromInstanceDerive`
 ///
 /// 为特定的结构体和枚举类型实现 [`TryFromInstanceTrait`](jbuchong::TryFromInstanceTrait).
@@ -476,7 +313,7 @@ pub fn from_instance_derive(input: TokenStream) -> TokenStream {
             let mut fall_arm = variants.first();
             let mut impl_tokens = proc_macro2::TokenStream::new();
             for variant in variants {
-                let this_attr = get_field_attr(variant.attrs.iter(), "fall", "default");
+                let this_attr = get_field_attr(variant.attrs.iter(), "fall");
                 if this_attr.is_some() {
                     fall_arm = Some(variant);
                 } else {
@@ -617,8 +454,8 @@ pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenSt
     } else {
         format!("<{ty_generics}>")
     }
-    .parse()
-    .unwrap();
+        .parse()
+        .unwrap();
     let (impl_generics, _, where_clause) = generics.split_for_impl();
     // let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let gen = quote! {
@@ -653,173 +490,6 @@ pub fn java_type(type_name_and_attr: TokenStream, input: TokenStream) -> TokenSt
     gen.into()
 }
 
-/// **fork from crate `newtype` version 0.2.1.**
-///
-/// 有何不同：使之可以作用于普通结构体，同时放宽字段数量限制，只需确保类型只有一个非 `PhantomData|PhantomPinned` 字段即可。
-///
-/// 原介绍：
-///
-/// > Treat a single-field tuple struct as a "newtype"
-/// >
-/// > This will implement `From`, `Into`, `Deref`, and `DerefMut` for the inner
-/// > type.
-///
-/// 原介绍翻译：
-///
-/// > 为单字段元组结构体实现 `newtype` 模式。
-/// >
-/// > 这将为内含值实现 `From`, `Into`, `Deref` 和 `DerefMut` 特型。
-///
-/// 此处原样提供 newtype 的 MIT 许可证（不适用于本项目）：
-/// ``` text
-/// Copyright (c) 2016 Josh Robson Chase
-///
-/// Permission is hereby granted, free of charge, to any
-/// person obtaining a copy of this software and associated
-/// documentation files (the "Software"), to deal in the
-/// Software without restriction, including without
-/// limitation the rights to use, copy, modify, merge,
-/// publish, distribute, sublicense, and/or sell copies of
-/// the Software, and to permit persons to whom the Software
-/// is furnished to do so, subject to the following
-/// conditions:
-///
-/// The above copyright notice and this permission notice
-/// shall be included in all copies or substantial portions
-/// of the Software.
-///
-/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-/// ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-/// TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-/// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-/// SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-/// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-/// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-/// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-/// DEALINGS IN THE SOFTWARE.
-/// ```
-#[proc_macro_derive(NewType)]
-pub fn newtype(input: TokenStream) -> TokenStream {
-    let input = syn::parse::<DeriveInput>(input).expect("syn parse derive input");
-    new_type_impl(input).into()
-}
-
-fn type_is_phantom(field: &Field) -> bool {
-    if let Type::Path(ref ty) = field.ty {
-        if let Some(ty) = ty.path.segments.last() {
-            return ty.ident == "PhantomData" || ty.ident == "PhantomPinned";
-        }
-    }
-    false
-}
-fn find_needed_field_index<F: Fn(&Field) -> bool>(
-    fields: &Fields,
-    is_need: F,
-) -> (usize, usize, Option<&proc_macro2::Ident>) {
-    let mut len = 0;
-    let mut th = 0;
-    let mut name = None;
-    for (th_, field) in fields.iter().enumerate() {
-        if is_need(field) {
-            len += 1;
-            th = th_;
-            name = field.ident.as_ref();
-        }
-    }
-    (len, th, name)
-}
-fn new_type_impl(input: DeriveInput) -> proc_macro2::TokenStream {
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    let name = input.ident;
-
-    let st = match input.data {
-        Data::Struct(st) => st,
-        _ => panic!("NewType can only be derived for single-valued-field structs"),
-    };
-    let (len, th, field_name) =
-        find_needed_field_index(&st.fields, |field: &Field| !type_is_phantom(field));
-    if len != 1 {
-        panic!("NewType can only be derived for single-valued-field structs")
-    }
-    let th = th.to_string().parse::<proc_macro2::TokenStream>().unwrap();
-    let field = st.fields.iter().next().unwrap();
-    let field_ty = &field.ty;
-    let (from, init) = fill_default_fields(
-        &st.fields,
-        |f| !type_is_phantom(f),
-        &"other".parse().unwrap(),
-    );
-    let from = quote! {
-        #(#init)*
-        #name
-        #from
-    };
-    let (deref, deref_mut, into_inner) = if let Some(field_name) = field_name {
-        let deref = quote! {
-            &self.#field_name
-        };
-        let deref_mut = quote! {
-            &mut self.#field_name
-        };
-        let into_inner = quote! {
-            self.#field_name
-        };
-        (deref, deref_mut, into_inner)
-    } else {
-        let deref = quote! {
-            &self.
-            #th
-        };
-        let deref_mut = quote! {
-            &mut self.
-            #th
-        };
-        let into_inner = quote! {
-            self.
-            #th
-        };
-        (deref, deref_mut, into_inner)
-    };
-
-    let from = quote! {
-        impl #impl_generics From<#field_ty> for #name #ty_generics #where_clause {
-            fn from(other: #field_ty) -> #name #ty_generics {
-                #from
-            }
-        }
-    };
-
-    let deref = quote! {
-        impl #impl_generics ::core::ops::Deref for #name #ty_generics #where_clause {
-            type Target = #field_ty;
-
-            fn deref(&self) -> &Self::Target {
-                #deref
-            }
-        }
-    };
-
-    let deref_mut = quote! {
-        impl #impl_generics ::core::ops::DerefMut for #name #ty_generics #where_clause {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                #deref_mut
-            }
-        }
-    };
-
-    let into_inner = quote! {
-        impl #impl_generics #name #ty_generics #where_clause {
-            /// Unwrap to the inner type
-            pub fn into_inner(self) -> #field_ty {
-                #into_inner
-            }
-        }
-    };
-
-    quote! {
-        #from #deref #deref_mut #into_inner
-    }
-}
 #[inline]
 fn java_impl(type_name: TokenStream, input: TokenStream) -> proc_macro2::TokenStream {
     let ast: &DeriveInput = &syn::parse(input).unwrap();

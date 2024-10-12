@@ -1,9 +1,10 @@
 use crate::traits::{GetInstanceTrait, TryFromInstanceTrait};
 use j4rs::{errors::J4RsError, Instance, InvocationArg, Jvm};
 use jbc_derive::{
-    java_all, java_type, AsInstanceDerive, GetInstanceDerive, NewType, TryFromInstanceDerive,
+    java_all, java_type, AsInstanceDerive, GetInstanceDerive, TryFromInstanceDerive,
 };
 use std::ops::Deref;
+use wnewtype::NewType;
 
 mod jbuchong {
     pub use crate::*;
@@ -88,8 +89,8 @@ where
 {
     fn get_instance(&self) -> Result<Instance, J4RsError> {
         let jvm = Jvm::attach_thread()?;
-        let v1 = InvocationArg::from(self.0 .0.get_instance()?);
-        let v2 = InvocationArg::from(self.0 .1.get_instance()?);
+        let v1 = InvocationArg::from(self.0.0.get_instance()?);
+        let v2 = InvocationArg::from(self.0.1.get_instance()?);
         jvm.create_instance("io.github.worksoup.JBuChongPair", &[v1, v2])
     }
 }
@@ -149,8 +150,8 @@ where
 {
     fn get_instance(&self) -> Result<Instance, J4RsError> {
         let jvm = Jvm::attach_thread()?;
-        let v1 = InvocationArg::from(self.0 .0.get_instance()?);
-        let v2 = InvocationArg::from(self.0 .1.get_instance()?);
+        let v1 = InvocationArg::from(self.0.0.get_instance()?);
+        let v2 = InvocationArg::from(self.0.1.get_instance()?);
         jvm.create_instance("kotlin.Pair", &[v1, v2])
     }
 }

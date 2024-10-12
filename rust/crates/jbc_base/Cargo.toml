@@ -7,3 +7,4 @@ edition = "2021"
 j4rs = { workspace = true }
 j4rs_derive = { workspace = true }
 jbc_derive = { path = "../jbc_derive" }
+wnewtype = {git = "https://github.com/worksoup/wnewtype.git"}
